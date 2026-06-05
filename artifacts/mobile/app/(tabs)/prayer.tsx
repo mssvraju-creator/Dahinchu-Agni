@@ -5,7 +5,6 @@ import {
   Alert,
   Animated,
   Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -16,10 +15,8 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 
 import { MinistryHeader } from "@/components/ui/MinistryHeader";
-import { BIBLE_VERSES } from "@/constants/ministry";
 import { useColors } from "@/hooks/useColors";
-import { usePrayer, PrayerRequest } from "@/context/PrayerContext";
-import { useAdmin } from "@/context/AdminContext";
+import { usePrayer } from "@/context/PrayerContext";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
 const PRAYER_VERSES = [
@@ -30,81 +27,19 @@ const PRAYER_VERSES = [
   { text: "If my people, who are called by my name, will humble themselves and pray... I will hear from heaven.", ref: "2 Chronicles 7:14" },
 ];
 
-function timeAgo(iso: string) {
-  const ms = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(ms / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-function PrayerCard({ prayer, onPray, onDelete, isAdmin }: { prayer: PrayerRequest; onPray: () => void; onDelete: () => void; isAdmin: boolean }) {
-  const colors = useColors();
-  return (
-    <View style={[styles.prayerCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-      <View style={styles.prayerCardHeader}>
-        <View style={[styles.avatarCircle, { backgroundColor: colors.primary + "22" }]}>
-          <Feather name="user" size={14} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.prayerName, { color: colors.foreground }]}>{prayer.name}</Text>
-          <Text style={[styles.prayerTime, { color: colors.mutedForeground }]}>{timeAgo(prayer.createdAt)}</Text>
-        </View>
-        {prayer.isPrayed ? (
-          <View style={[styles.prayedBadge, { backgroundColor: "#059669" + "22" }]}>
-            <Feather name="check" size={10} color="#059669" />
-            <Text style={[styles.prayedText, { color: "#059669" }]}>Prayed</Text>
-          </View>
-        ) : null}
-      </View>
-      <Text style={[styles.prayerText, { color: colors.foreground }]}>{prayer.request}</Text>
-      <View style={styles.prayerActions}>
-        {!prayer.isPrayed ? (
-          <TouchableOpacity
-            style={[styles.prayBtn, { backgroundColor: "#7C3AED" + "18" }]}
-            onPress={async () => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-              onPray();
-            }}
-          >
-            <Feather name="heart" size={13} color="#7C3AED" />
-            <Text style={[styles.prayBtnText, { color: "#7C3AED" }]}>I prayed for this</Text>
-          </TouchableOpacity>
-        ) : null}
-        {isAdmin ? (
-          <TouchableOpacity
-            style={[styles.deletePrayBtn, { borderColor: "#EF4444" + "44" }]}
-            onPress={async () => {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              onDelete();
-            }}
-          >
-            <Feather name="trash-2" size={13} color="#EF4444" />
-          </TouchableOpacity>
-        ) : null}
-      </View>
-    </View>
-  );
-}
-
 export default function PrayerScreen() {
   const colors = useColors();
-  const { prayers, submitPrayer, markPrayed, deletePrayer } = usePrayer();
-  const { isAdmin } = useAdmin();
+  const { submitPrayer } = usePrayer();
   const [verseIdx, setVerseIdx] = useState(0);
   const verseAnim = useRef(new Animated.Value(1)).current;
 
   const [name, setName] = useState("");
   const [request, setRequest] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [isPublic, setIsPublic] = useState(true);
   const [sending, setSending] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
   const bottomPadding = Platform.OS === "web" ? 34 : 0;
-  const publicPrayers = prayers.filter((p) => p.isPublic);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -129,12 +64,11 @@ export default function PrayerScreen() {
       name: isAnonymous ? "Anonymous" : name.trim() || "Anonymous",
       request: request.trim(),
       isAnonymous,
-      isPublic,
+      isPublic: false,
     });
     setName("");
     setRequest("");
     setIsAnonymous(false);
-    setIsPublic(true);
     setSending(false);
     setShowForm(false);
     Alert.alert("Prayer Submitted", "Your prayer request has been received. Our team will pray for you.");
@@ -210,15 +144,6 @@ export default function PrayerScreen() {
                   thumbColor="#FFFFFF"
                 />
               </View>
-              <View style={styles.toggleItem}>
-                <Text style={[styles.toggleLabel, { color: colors.foreground }]}>Show on prayer wall</Text>
-                <Switch
-                  value={isPublic}
-                  onValueChange={setIsPublic}
-                  trackColor={{ false: colors.border, true: "#7C3AED" }}
-                  thumbColor="#FFFFFF"
-                />
-              </View>
             </View>
 
             <View style={styles.formBtns}>
@@ -239,33 +164,6 @@ export default function PrayerScreen() {
             </View>
           </View>
         )}
-
-        {/* Prayer Wall */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground, fontFamily: "DMSerifDisplay_400Regular" }]}>
-            Prayer Wall
-          </Text>
-          <Text style={[styles.sectionSub, { color: colors.mutedForeground }]}>
-            Join your brothers and sisters in prayer
-          </Text>
-
-          {publicPrayers.length === 0 ? (
-            <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <Feather name="heart" size={32} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Be the first to share a prayer request</Text>
-            </View>
-          ) : (
-            publicPrayers.map((prayer) => (
-              <PrayerCard
-                key={prayer.id}
-                prayer={prayer}
-                onPray={() => markPrayed(prayer.id)}
-                onDelete={() => deletePrayer(prayer.id)}
-                isAdmin={isAdmin}
-              />
-            ))
-          )}
-        </View>
       </KeyboardAwareScrollViewCompat>
     </View>
   );
@@ -290,21 +188,4 @@ const styles = StyleSheet.create({
   cancelBtnText: { fontSize: 14, fontWeight: "500", fontFamily: "Inter_500Medium" },
   sendBtn: { flex: 2, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, borderRadius: 10, paddingVertical: 12 },
   sendBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  section: { paddingHorizontal: 16, marginBottom: 8 },
-  sectionTitle: { fontSize: 22, fontWeight: "600", marginBottom: 4 },
-  sectionSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 14 },
-  prayerCard: { borderRadius: 14, borderWidth: 1, padding: 14, marginBottom: 10, gap: 10 },
-  prayerCardHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
-  avatarCircle: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center" },
-  prayerName: { fontSize: 14, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  prayerTime: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  prayedBadge: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  prayedText: { fontSize: 11, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
-  prayerText: { fontSize: 14, lineHeight: 21, fontFamily: "Inter_400Regular" },
-  prayerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
-  prayBtn: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  prayBtnText: { fontSize: 12, fontWeight: "500", fontFamily: "Inter_500Medium" },
-  deletePrayBtn: { borderWidth: 1, borderRadius: 8, padding: 6 },
-  emptyCard: { borderRadius: 14, borderWidth: 1, borderStyle: "dashed", padding: 32, alignItems: "center", gap: 10 },
-  emptyText: { fontSize: 14, textAlign: "center", fontFamily: "Inter_400Regular" },
 });
