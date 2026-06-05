@@ -215,6 +215,9 @@ importers:
 
   artifacts/mobile:
     dependencies:
+      '@expo-google-fonts/dm-serif-display':
+        specifier: ^0.4.2
+        version: 0.4.2
       react-native-web-webview:
         specifier: ^1.0.2
         version: 1.0.2(react-native-web@0.21.2(react-dom@19.1.0(react@19.1.0))(react@19.1.0))
@@ -1189,6 +1192,9 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [linux]
+
+  '@expo-google-fonts/dm-serif-display@0.4.2':
+    resolution: {integrity: sha512-onlO8xAzsgMbKcwUE+fAgJ5AFHhk06VtaDN7eQOJwjV65QIciDKTiSNu1ymHc4m6g/x6D9OqPIYPXdTNIfaEaA==}
 
   '@expo-google-fonts/inter@0.4.2':
     resolution: {integrity: sha512-syfiImMaDmq7cFi0of+waE2M4uSCyd16zgyWxdPOY7fN2VBmSLKEzkfbZgeOjJq61kSqPBNNtXjggiQiSD6gMQ==}
@@ -6469,6 +6475,8 @@ snapshots:
 
   '@esbuild/linux-x64@0.27.3':
     optional: true
+
+  '@expo-google-fonts/dm-serif-display@0.4.2': {}
 
   '@expo-google-fonts/inter@0.4.2': {}
 

@@ -5,6 +5,9 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import {
+  DMSerifDisplay_400Regular,
+} from "@expo-google-fonts/dm-serif-display";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -14,7 +17,9 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/components/ErrorBoundary";
-import { ContentProvider } from "@/contexts/ContentContext";
+import { AdminProvider } from "@/context/AdminContext";
+import { PrayerProvider } from "@/context/PrayerContext";
+import { SettingsProvider } from "@/context/SettingsContext";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -22,24 +27,15 @@ const queryClient = new QueryClient();
 
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerBackTitle: "Back" }}>
+    <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="admin"
-        options={{
-          title: "Admin Access",
-          headerShown: false,
-          presentation: "modal",
-        }}
-      />
-      <Stack.Screen
-        name="admin-panel"
-        options={{
-          title: "Admin Panel",
-          headerShown: false,
-          presentation: "modal",
-        }}
-      />
+      <Stack.Screen name="admin" options={{ presentation: "modal" }} />
+      <Stack.Screen name="settings" options={{ presentation: "card" }} />
+      <Stack.Screen name="about" options={{ presentation: "card" }} />
+      <Stack.Screen name="give" options={{ presentation: "card" }} />
+      <Stack.Screen name="resources" options={{ presentation: "card" }} />
+      <Stack.Screen name="contact" options={{ presentation: "card" }} />
+      <Stack.Screen name="+not-found" />
     </Stack>
   );
 }
@@ -50,6 +46,7 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    DMSerifDisplay_400Regular,
   });
 
   useEffect(() => {
@@ -64,13 +61,17 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <ContentProvider>
-            <GestureHandlerRootView>
-              <KeyboardProvider>
-                <RootLayoutNav />
-              </KeyboardProvider>
-            </GestureHandlerRootView>
-          </ContentProvider>
+          <SettingsProvider>
+            <AdminProvider>
+              <PrayerProvider>
+                <GestureHandlerRootView style={{ flex: 1 }}>
+                  <KeyboardProvider>
+                    <RootLayoutNav />
+                  </KeyboardProvider>
+                </GestureHandlerRootView>
+              </PrayerProvider>
+            </AdminProvider>
+          </SettingsProvider>
         </QueryClientProvider>
       </ErrorBoundary>
     </SafeAreaProvider>

@@ -1,404 +1,247 @@
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import * as WebBrowser from "expo-web-browser";
+import { router } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
-  Dimensions,
-  FlatList,
-  Image,
+  Animated,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { useContent } from "@/contexts/ContentContext";
+import { MinistryHeader } from "@/components/ui/MinistryHeader";
+import { VideoCard } from "@/components/ui/VideoCard";
+import { EventCard } from "@/components/ui/EventCard";
+import { MINISTRY, BIBLE_VERSES } from "@/constants/ministry";
 import { useColors } from "@/hooks/useColors";
+import { useYouTubeFeed } from "@/hooks/useYouTubeFeed";
+import { useAdmin } from "@/context/AdminContext";
 
-const { width } = Dimensions.get("window");
-const LOGO_URL = "http://www.dahinchuagni.in/images/logo.png";
+function StatCard({ number, label, idx }: { number: string; label: string; idx: number }) {
+  const colors = useColors();
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(anim, { toValue: 1, duration: 500, delay: idx * 80, useNativeDriver: true }).start();
+  }, []);
+  return (
+    <Animated.View
+      style={[
+        styles.statCard,
+        { backgroundColor: colors.card, borderColor: colors.border, opacity: anim, transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }] },
+      ]}
+    >
+      <Text style={[styles.statNumber, { color: "#E84C1E", fontFamily: "DMSerifDisplay_400Regular" }]}>{number}</Text>
+      <Text style={[styles.statLabel, { color: colors.mutedForeground, fontFamily: "Inter_500Medium" }]}>{label}</Text>
+    </Animated.View>
+  );
+}
 
 export default function HomeScreen() {
   const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const router = useRouter();
-  const { videos, liveStreams, announcements } = useContent();
-  const [logoError, setLogoError] = useState(false);
+  const { data: videos, isLoading: videosLoading, refetch } = useYouTubeFeed();
+  const { events, adminSettings } = useAdmin();
+  const [refreshing, setRefreshing] = useState(false);
+  const [verseIdx] = useState(() => new Date().getDate() % BIBLE_VERSES.length);
+  const verse = BIBLE_VERSES[verseIdx];
 
-  const activeLive = liveStreams.filter((l) => l.isActive);
+  const bottomPadding = Platform.OS === "web" ? 34 : 0;
 
-  const topPad =
-    Platform.OS === "web" ? Math.max(insets.top, 67) : insets.top;
+  const upcomingEvents = events
+    .filter((e) => new Date(e.date + "T00:00:00") >= new Date(new Date().toDateString()))
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3);
+
+  const latestVideos = videos?.slice(0, 5) ?? [];
+
+  async function handleRefresh() {
+    setRefreshing(true);
+    await refetch();
+    setRefreshing(false);
+  }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Header Banner */}
-      <LinearGradient
-        colors={["#0B2A7A", "#1A4DBF", "#0B2A7A"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.banner, { paddingTop: topPad + 16 }]}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <MinistryHeader />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: bottomPadding + 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#F97316" />}
       >
-        <View style={styles.bannerContent}>
-          {!logoError ? (
-            <Image
-              source={{ uri: LOGO_URL }}
-              style={styles.logo}
-              resizeMode="contain"
-              onError={() => setLogoError(true)}
-            />
-          ) : (
-            <View style={[styles.logoFallback, { backgroundColor: "#E05A1F" }]}>
-              <Text style={styles.logoFallbackText}>DA</Text>
-            </View>
-          )}
-          <Text style={styles.ministryName}>Dahinchu Agni</Text>
-          <Text style={styles.ministryTagline}>Consuming Fire Ministries</Text>
-          <Text style={styles.ministryLocation}>Rajahmundry, Andhra Pradesh</Text>
-        </View>
-      </LinearGradient>
-
-      {/* Announcements */}
-      {announcements.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Feather name="bell" size={16} color={colors.accent} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Announcements
-            </Text>
+        {/* Notice Banner */}
+        {adminSettings.noticeText ? (
+          <View style={[styles.noticeBanner, { backgroundColor: "#FFF7ED", borderColor: "#FED7AA" }]}>
+            <Feather name="bell" size={14} color="#F97316" />
+            <Text style={[styles.noticeText, { color: "#431407" }]}>{adminSettings.noticeText}</Text>
           </View>
-          {announcements.map((a) => (
-            <View
-              key={a.id}
-              style={[
-                styles.announcementCard,
-                {
-                  backgroundColor: colors.secondary,
-                  borderLeftColor: colors.accent,
-                },
-              ]}
-            >
-              <Text style={[styles.announcementText, { color: colors.secondaryForeground }]}>
-                {a.text}
-              </Text>
-              <Text style={[styles.announcementDate, { color: colors.mutedForeground }]}>
-                {a.date}
-              </Text>
-            </View>
-          ))}
-        </View>
-      )}
+        ) : null}
 
-      {/* Live Now */}
-      {activeLive.length > 0 && (
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View style={styles.liveDot} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-              Live Now
-            </Text>
-          </View>
-          {activeLive.map((l) => (
-            <TouchableOpacity
-              key={l.id}
-              style={[styles.liveCard, { backgroundColor: "#0B2A7A" }]}
-              onPress={() => router.push("/(tabs)/live")}
-              activeOpacity={0.85}
-            >
-              <LinearGradient
-                colors={["#0B2A7A", "#1A4DBF"]}
-                style={styles.liveCardGradient}
-              >
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.liveBadgeText}>LIVE</Text>
-                </View>
-                <Text style={styles.liveCardTitle}>{l.title}</Text>
-                <Text style={styles.liveCardSub}>Tap to watch</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* Recent Videos */}
-      {videos.length > 0 && (
-        <View style={styles.section}>
-          <View style={[styles.sectionHeader, styles.sectionHeaderRow]}>
-            <View style={styles.sectionHeader}>
-              <Feather name="play-circle" size={16} color={colors.accent} />
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Recent Messages
-              </Text>
-            </View>
-            <TouchableOpacity onPress={() => router.push("/(tabs)/videos")}>
-              <Text style={[styles.seeAll, { color: colors.accent }]}>See all</Text>
-            </TouchableOpacity>
-          </View>
-          <FlatList
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            data={videos.slice(0, 5)}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.videosRow}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[styles.videoCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-                onPress={() => router.push("/(tabs)/videos")}
-                activeOpacity={0.85}
-              >
-                <Image
-                  source={{ uri: `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg` }}
-                  style={styles.videoThumb}
-                  resizeMode="cover"
-                />
-                <View style={styles.playOverlay}>
-                  <Feather name="play-circle" size={28} color="rgba(255,255,255,0.9)" />
-                </View>
-                <View style={styles.videoInfo}>
-                  <Text
-                    style={[styles.videoTitle, { color: colors.cardForeground }]}
-                    numberOfLines={2}
-                  >
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.videoDate, { color: colors.mutedForeground }]}>
-                    {item.date}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-          />
-        </View>
-      )}
-
-      {/* Ministry Info */}
-      <View style={styles.section}>
-        <View
-          style={[
-            styles.infoCard,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
+        {/* Bible Verse */}
+        <LinearGradient
+          colors={["#FFF7ED", "#FFECD2", "#FFF7ED"] as any}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={[styles.verseCard, { borderColor: "#FED7AA" }]}
         >
-          <Feather name="info" size={16} color={colors.primary} />
-          <Text style={[styles.infoTitle, { color: colors.foreground }]}>
-            About Dahinchu Agni
-          </Text>
-          <Text style={[styles.infoBody, { color: colors.mutedForeground }]}>
-            Founded in 1994 by Dr. Thomas, Dahinchu Agni (Consuming Fire)
-            Ministries is based in Rajahmundry, Andhra Pradesh. With 17 kinds of
-            ministries, Dr. Thomas spreads the Gospel across India through
-            television, prayer meetings, and pastoral fellowships.
-          </Text>
+          <Feather name="book-open" size={15} color="#F97316" style={{ marginBottom: 8 }} />
+          <Text style={[styles.verseText, { color: "#431407" }]}>"{verse.text}"</Text>
+          <Text style={[styles.verseRef, { color: "#E84C1E" }]}>{verse.ref}</Text>
+        </LinearGradient>
+
+        {/* Stats */}
+        <View style={styles.statsRow}>
+          {MINISTRY.stats.map((s, i) => (
+            <StatCard key={s.label} number={s.number} label={s.label} idx={i} />
+          ))}
+        </View>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
           <TouchableOpacity
-            style={[styles.websiteBtn, { borderColor: colors.primary }]}
-            onPress={() => {}}
+            style={[styles.quickBtn, { backgroundColor: "#DC2626" }]}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              await WebBrowser.openBrowserAsync(MINISTRY.youtubeChannelUrl + "/live");
+            }}
           >
-            <Feather name="globe" size={14} color={colors.primary} />
-            <Text style={[styles.websiteBtnText, { color: colors.primary }]}>
-              www.dahinchuagni.in
-            </Text>
+            <View style={styles.liveDot} />
+            <Text style={styles.quickBtnText}>Watch Live</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: "#C8860A" }]}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/give");
+            }}
+          >
+            <Feather name="gift" size={14} color="#FFFFFF" />
+            <Text style={styles.quickBtnText}>Give</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: "#7C3AED" }]}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/(tabs)/prayer");
+            }}
+          >
+            <Feather name="heart" size={14} color="#FFFFFF" />
+            <Text style={styles.quickBtnText}>Prayer</Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </ScrollView>
+
+        {/* Latest Messages from YouTube */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, fontFamily: "DMSerifDisplay_400Regular" }]}>Latest Messages</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/media")}>
+              <Text style={[styles.seeAll, { color: "#E84C1E" }]}>See all</Text>
+            </TouchableOpacity>
+          </View>
+
+          {videosLoading ? (
+            <View style={[styles.skeletonCard, { backgroundColor: colors.card }]}>
+              <Text style={{ color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontSize: 13 }}>Loading latest messages...</Text>
+            </View>
+          ) : latestVideos.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="youtube" size={28} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No videos loaded</Text>
+              <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>Open on your phone to watch live & recorded messages</Text>
+              <TouchableOpacity
+                onPress={async () => { await WebBrowser.openBrowserAsync(MINISTRY.youtubeChannelUrl); }}
+                style={[styles.visitBtn, { backgroundColor: "#DC2626" }]}
+              >
+                <Feather name="external-link" size={13} color="#FFFFFF" />
+                <Text style={styles.visitBtnText}>Open YouTube Channel</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <VideoCard video={latestVideos[0]} featured />
+              {latestVideos.slice(1, 4).map((v) => <VideoCard key={v.id} video={v} />)}
+            </>
+          )}
+        </View>
+
+        {/* Upcoming Events */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionTitle, { color: colors.foreground, fontFamily: "DMSerifDisplay_400Regular" }]}>Upcoming Events</Text>
+            <TouchableOpacity onPress={() => router.push("/(tabs)/events")}>
+              <Text style={[styles.seeAll, { color: "#E84C1E" }]}>See all</Text>
+            </TouchableOpacity>
+          </View>
+          {upcomingEvents.length === 0 ? (
+            <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Feather name="calendar" size={28} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No upcoming events</Text>
+            </View>
+          ) : (
+            upcomingEvents.map((e) => <EventCard key={e.id} event={e} compact />)
+          )}
+        </View>
+
+        {/* Calvary TV Banner */}
+        <TouchableOpacity
+          style={{ marginHorizontal: 16, marginBottom: 20 }}
+          onPress={async () => {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await WebBrowser.openBrowserAsync(MINISTRY.youtubeChannelUrl);
+          }}
+        >
+          <LinearGradient
+            colors={["#1C1C1C", "#2D1515"] as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.calvaryBanner}
+          >
+            <View style={[styles.calvaryIcon, { backgroundColor: "#E84C1E22" }]}>
+              <Feather name="tv" size={20} color="#E84C1E" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.calvaryTitle}>Calvary TV Ministry</Text>
+              <Text style={styles.calvarySub}>Watch Sunday services, Pastor's meetings & live programs</Text>
+            </View>
+            <Feather name="external-link" size={16} color="#E84C1E" />
+          </LinearGradient>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  banner: {
-    paddingBottom: 32,
-    paddingHorizontal: 24,
-  },
-  bannerContent: {
-    alignItems: "center",
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 12,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  logoFallback: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-  logoFallbackText: {
-    color: "#FFFFFF",
-    fontSize: 36,
-    fontWeight: "800",
-    fontFamily: "Inter_700Bold",
-  },
-  ministryName: {
-    color: "#FFFFFF",
-    fontSize: 28,
-    fontWeight: "800",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
-  ministryTagline: {
-    color: "rgba(255,255,255,0.85)",
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    marginTop: 4,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  ministryLocation: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    marginTop: 4,
-  },
-  section: { paddingHorizontal: 20, marginTop: 24 },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 12,
-  },
-  sectionHeaderRow: {
-    justifyContent: "space-between",
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  seeAll: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  announcementCard: {
-    borderLeftWidth: 4,
-    borderRadius: 10,
-    padding: 14,
-    marginBottom: 8,
-  },
-  announcementText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 20,
-  },
-  announcementDate: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    marginTop: 6,
-  },
-  liveDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#EF4444",
-  },
-  liveCard: {
-    borderRadius: 14,
-    overflow: "hidden",
-  },
-  liveCardGradient: {
-    padding: 20,
-    gap: 6,
-  },
-  liveBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    marginBottom: 4,
-  },
-  liveBadgeText: {
-    color: "#EF4444",
-    fontSize: 12,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 1.5,
-  },
-  liveCardTitle: {
-    color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  liveCardSub: {
-    color: "rgba(255,255,255,0.6)",
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  videosRow: {
-    paddingLeft: 2,
-    paddingRight: 20,
-    gap: 14,
-  },
-  videoCard: {
-    width: width * 0.6,
-    borderRadius: 12,
-    overflow: "hidden",
-    borderWidth: 1,
-  },
-  videoThumb: {
-    width: "100%",
-    height: 110,
-    backgroundColor: "#E5E7EB",
-  },
-  playOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: "center",
-    justifyContent: "center",
-    top: 0,
-    height: 110,
-  },
-  videoInfo: { padding: 10, gap: 4 },
-  videoTitle: {
-    fontSize: 13,
-    fontWeight: "600",
-    fontFamily: "Inter_600SemiBold",
-    lineHeight: 18,
-  },
-  videoDate: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-  },
-  infoCard: {
-    borderRadius: 14,
-    padding: 18,
-    gap: 10,
-    borderWidth: 1,
-  },
-  infoTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-  },
-  infoBody: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 21,
-  },
-  websiteBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignSelf: "flex-start",
-    marginTop: 4,
-  },
-  websiteBtnText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
+  noticeBanner: { flexDirection: "row", alignItems: "flex-start", gap: 8, marginHorizontal: 16, marginTop: 14, padding: 12, borderRadius: 12, borderWidth: 1 },
+  noticeText: { flex: 1, fontSize: 13, fontFamily: "Inter_400Regular", lineHeight: 19 },
+  verseCard: { margin: 16, marginTop: 14, borderRadius: 16, padding: 18, borderWidth: 1 },
+  verseText: { fontSize: 15, lineHeight: 23, fontStyle: "italic", marginBottom: 10, fontFamily: "Inter_400Regular" },
+  verseRef: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  statsRow: { flexDirection: "row", paddingHorizontal: 16, gap: 8, marginBottom: 16 },
+  statCard: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: "center", gap: 3 },
+  statNumber: { fontSize: 18, fontWeight: "700" },
+  statLabel: { fontSize: 9, textTransform: "uppercase", letterSpacing: 0.4, textAlign: "center" },
+  quickActions: { flexDirection: "row", marginHorizontal: 16, gap: 10, marginBottom: 20 },
+  quickBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 13, borderRadius: 12 },
+  quickBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#FFFFFF" },
+  section: { paddingHorizontal: 16, marginBottom: 10 },
+  sectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  sectionTitle: { fontSize: 22, fontWeight: "600" },
+  seeAll: { fontSize: 14, fontWeight: "500", fontFamily: "Inter_500Medium" },
+  skeletonCard: { borderRadius: 12, padding: 20, alignItems: "center" },
+  emptyCard: { borderRadius: 12, padding: 24, alignItems: "center", gap: 8, borderWidth: 1, borderStyle: "dashed" },
+  emptyTitle: { fontSize: 15, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  emptySub: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 19 },
+  visitBtn: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 10, marginTop: 4 },
+  visitBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
+  calvaryBanner: { borderRadius: 14, padding: 16, flexDirection: "row", alignItems: "center", gap: 12 },
+  calvaryIcon: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center" },
+  calvaryTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
+  calvarySub: { color: "rgba(255,255,255,0.65)", fontSize: 12, fontFamily: "Inter_400Regular", marginTop: 2 },
 });

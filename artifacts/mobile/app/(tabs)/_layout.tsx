@@ -16,17 +16,21 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="videos">
+      <NativeTabs.Trigger name="media">
         <Icon sf={{ default: "play.circle", selected: "play.circle.fill" }} />
-        <Label>Messages</Label>
+        <Label>Media</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="live">
-        <Icon sf={{ default: "dot.radiowaves.left.and.right", selected: "dot.radiowaves.left.and.right" }} />
-        <Label>Live</Label>
+      <NativeTabs.Trigger name="events">
+        <Icon sf={{ default: "calendar", selected: "calendar" }} />
+        <Label>Events</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="settings">
-        <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Settings</Label>
+      <NativeTabs.Trigger name="prayer">
+        <Icon sf={{ default: "hands.sparkles", selected: "hands.sparkles.fill" }} />
+        <Label>Prayer</Label>
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="more">
+        <Icon sf={{ default: "ellipsis", selected: "ellipsis" }} />
+        <Label>More</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -42,7 +46,7 @@ function ClassicTabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.accent,
+        tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         headerShown: false,
         tabBarStyle: {
@@ -61,13 +65,9 @@ function ClassicTabLayout() {
               style={StyleSheet.absoluteFill}
             />
           ) : isWeb ? (
-            <View
-              style={[
-                StyleSheet.absoluteFill,
-                { backgroundColor: colors.background },
-              ]}
-            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.background }]} />
           ) : null,
+        tabBarLabelStyle: { fontSize: 10, fontFamily: "Inter_500Medium" },
       }}
     >
       <Tabs.Screen
@@ -83,9 +83,9 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="videos"
+        name="media"
         options={{
-          title: "Messages",
+          title: "Media",
           tabBarIcon: ({ color }) =>
             isIOS ? (
               <SymbolView name="play.circle" tintColor={color} size={24} />
@@ -95,26 +95,38 @@ function ClassicTabLayout() {
         }}
       />
       <Tabs.Screen
-        name="live"
+        name="events"
         options={{
-          title: "Live",
+          title: "Events",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="dot.radiowaves.left.and.right" tintColor={color} size={24} />
+              <SymbolView name="calendar" tintColor={color} size={24} />
             ) : (
-              <Feather name="radio" size={22} color={color} />
+              <Feather name="calendar" size={22} color={color} />
             ),
         }}
       />
       <Tabs.Screen
-        name="settings"
+        name="prayer"
         options={{
-          title: "Settings",
+          title: "Prayer",
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="gearshape" tintColor={color} size={24} />
+              <SymbolView name="heart" tintColor={color} size={24} />
             ) : (
-              <Feather name="settings" size={22} color={color} />
+              <Feather name="heart" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="more"
+        options={{
+          title: "More",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="ellipsis" tintColor={color} size={24} />
+            ) : (
+              <Feather name="more-horizontal" size={22} color={color} />
             ),
         }}
       />
