@@ -97,7 +97,7 @@ export function YouTubePlayer({ videoId, title, published, channelName, visible,
               setReady(true);
               setPlaying(true);
             }}
-            onError={(e) => {
+            onError={(_e: unknown) => {
               setReady(true);
             }}
             webViewProps={{

@@ -31,6 +31,41 @@ const CAT_MAP: Record<Category, MinistryEvent["category"] | null> = {
   Special: "special",
 };
 
+const DAY_TO_NUM: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+};
+
+function getNextOccurrenceDate(event: MinistryEvent): string {
+  if (!event.isRecurring) return event.date;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const eventDate = new Date(event.date + "T00:00:00");
+  if (eventDate >= today) return event.date;
+
+  const pattern = (event.recurringPattern || "").toLowerCase();
+
+  for (const [dayName, dayNum] of Object.entries(DAY_TO_NUM)) {
+    if (pattern.includes(dayName)) {
+      const diff = (dayNum - today.getDay() + 7) % 7 || 7;
+      const next = new Date(today);
+      next.setDate(today.getDate() + diff);
+      return next.toISOString().split("T")[0];
+    }
+  }
+
+  let d = new Date(eventDate);
+  while (d < today) d.setDate(d.getDate() + 7);
+  return d.toISOString().split("T")[0];
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+}
+
 export default function EventsScreen() {
   const colors = useColors();
   const { events, isAdmin, deleteEvent } = useAdmin();
@@ -39,9 +74,12 @@ export default function EventsScreen() {
 
   const bottomPadding = Platform.OS === "web" ? 34 : 0;
 
-  const today = new Date(new Date().toDateString());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const upcoming = events
-    .filter((e) => new Date(e.date) >= today)
+    .map((e) => ({ ...e, date: getNextOccurrenceDate(e) }))
+    .filter((e) => new Date(e.date + "T00:00:00") >= today)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   const filtered =
@@ -57,7 +95,6 @@ export default function EventsScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: bottomPadding + 100 }}
       >
-        {/* Category Filter */}
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -89,7 +126,6 @@ export default function EventsScreen() {
           ))}
         </ScrollView>
 
-        {/* Admin Add Button */}
         {isAdmin ? (
           <TouchableOpacity
             style={[styles.adminBtn, { backgroundColor: colors.card, borderColor: colors.primary }]}
@@ -103,14 +139,13 @@ export default function EventsScreen() {
           </TouchableOpacity>
         ) : null}
 
-        {/* Events List */}
         <View style={styles.eventsList}>
           {filtered.length === 0 ? (
             <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Feather name="calendar" size={40} color={colors.mutedForeground} />
               <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No events found</Text>
               <Text style={[styles.emptySub, { color: colors.mutedForeground }]}>
-                Check back soon for upcoming {activeCategory !== "All" ? activeCategory.toLowerCase() : ""} events.
+                Check back soon for upcoming{activeCategory !== "All" ? ` ${activeCategory.toLowerCase()}` : ""} events.
               </Text>
             </View>
           ) : (
@@ -138,7 +173,6 @@ export default function EventsScreen() {
         </View>
       </ScrollView>
 
-      {/* Event Detail Modal */}
       <Modal
         visible={selectedEvent !== null}
         animationType="slide"
@@ -156,15 +190,56 @@ export default function EventsScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              <EventCard event={selectedEvent} />
+              <View style={[styles.infoBlock, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <View style={styles.infoRow}>
+                  <Feather name="calendar" size={15} color={colors.primary} />
+                  <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Date</Text>
+                  <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                    {formatDate(getNextOccurrenceDate(selectedEvent))}
+                  </Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Feather name="clock" size={15} color={colors.primary} />
+                  <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Time</Text>
+                  <Text style={[styles.infoValue, { color: colors.foreground }]}>
+                    {selectedEvent.time}{selectedEvent.endTime ? ` – ${selectedEvent.endTime}` : ""}
+                  </Text>
+                </View>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <View style={styles.infoRow}>
+                  <Feather name="map-pin" size={15} color={colors.primary} />
+                  <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Location</Text>
+                  <Text style={[styles.infoValue, { color: colors.foreground }]} numberOfLines={2}>
+                    {selectedEvent.location}
+                  </Text>
+                </View>
+                {selectedEvent.recurringPattern ? (
+                  <>
+                    <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                    <View style={styles.infoRow}>
+                      <Feather name="repeat" size={15} color={colors.primary} />
+                      <Text style={[styles.infoLabel, { color: colors.mutedForeground }]}>Recurring</Text>
+                      <Text style={[styles.infoValue, { color: colors.foreground }]}>{selectedEvent.recurringPattern}</Text>
+                    </View>
+                  </>
+                ) : null}
+              </View>
+
               <Text style={[styles.modalDesc, { color: colors.foreground }]}>
                 {selectedEvent.description}
               </Text>
-              {selectedEvent.recurringPattern ? (
-                <View style={[styles.infoRow, { backgroundColor: colors.card, borderRadius: 10, padding: 12, marginBottom: 8 }]}>
-                  <Feather name="repeat" size={16} color={colors.primary} />
-                  <Text style={[styles.infoText, { color: colors.foreground }]}>{selectedEvent.recurringPattern}</Text>
-                </View>
+
+              {selectedEvent.registrationUrl ? (
+                <TouchableOpacity
+                  style={[styles.registerBtn, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  }}
+                >
+                  <Feather name="external-link" size={15} color="#FFFFFF" />
+                  <Text style={styles.registerBtnText}>Register / Learn More</Text>
+                </TouchableOpacity>
               ) : null}
             </ScrollView>
           </View>
@@ -192,7 +267,12 @@ const styles = StyleSheet.create({
   modalTitle: { flex: 1, fontSize: 18, fontWeight: "700", fontFamily: "Inter_700Bold", lineHeight: 24 },
   closeBtn: { padding: 4 },
   modalContent: { padding: 20, gap: 16 },
+  infoBlock: { borderRadius: 12, borderWidth: 1, overflow: "hidden" },
+  infoRow: { flexDirection: "row", alignItems: "center", gap: 10, padding: 14 },
+  infoLabel: { fontSize: 13, fontFamily: "Inter_500Medium", width: 70 },
+  infoValue: { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  divider: { height: 1 },
   modalDesc: { fontSize: 15, lineHeight: 23, fontFamily: "Inter_400Regular" },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  infoText: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  registerBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 12, paddingVertical: 14 },
+  registerBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "700", fontFamily: "Inter_700Bold" },
 });
