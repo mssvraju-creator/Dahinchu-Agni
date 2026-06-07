@@ -14,13 +14,16 @@ interface Props {
   subtitle?: string;
   showBack?: boolean;
   onBack?: () => void;
+  isLive?: boolean;
+  onLiveBellPress?: () => void;
 }
 
-export function MinistryHeader({ subtitle, showBack, onBack }: Props) {
+export function MinistryHeader({ subtitle, showBack, onBack, isLive, onLiveBellPress }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const livePulse = useRef(new Animated.Value(1)).current;
   const topPadding = Platform.OS === "web" ? 52 : insets.top;
 
   useEffect(() => {
@@ -31,6 +34,18 @@ export function MinistryHeader({ subtitle, showBack, onBack }: Props) {
       ])
     ).start();
   }, []);
+
+  useEffect(() => {
+    if (!isLive) { livePulse.setValue(1); return; }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(livePulse, { toValue: 1.25, duration: 700, useNativeDriver: true }),
+        Animated.timing(livePulse, { toValue: 1, duration: 700, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isLive]);
 
   return (
     <LinearGradient
@@ -64,6 +79,28 @@ export function MinistryHeader({ subtitle, showBack, onBack }: Props) {
             {subtitle ?? MINISTRY.tagline}
           </Text>
         </View>
+
+        {/* Live notification bell */}
+        {isLive !== undefined ? (
+          <TouchableOpacity
+            onPress={onLiveBellPress}
+            style={styles.bellBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather
+              name="bell"
+              size={20}
+              color={isLive ? "#DC2626" : "#9A3412"}
+            />
+            {isLive ? (
+              <Animated.View
+                style={[styles.liveBadge, { transform: [{ scale: livePulse }] }]}
+              >
+                <View style={styles.liveBadgeDot} />
+              </Animated.View>
+            ) : null}
+          </TouchableOpacity>
+        ) : null}
       </View>
     </LinearGradient>
   );
@@ -122,5 +159,28 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textTransform: "uppercase",
     fontFamily: "Inter_600SemiBold",
+  },
+  bellBtn: {
+    padding: 6,
+    position: "relative",
+  },
+  liveBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#DC2626",
+    borderWidth: 1.5,
+    borderColor: "#FFF7ED",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  liveBadgeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#FFFFFF",
   },
 });
