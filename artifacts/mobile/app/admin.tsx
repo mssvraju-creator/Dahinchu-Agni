@@ -24,7 +24,7 @@ import { usePrayer } from "@/context/PrayerContext";
 import { MinistryEvent, MinistryResource } from "@/constants/ministry";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
-type AdminTab = "events" | "resources" | "prayers" | "settings";
+type AdminTab = "events" | "resources" | "prayers" | "notifications" | "settings";
 
 export default function AdminScreen() {
   const colors = useColors();
@@ -55,6 +55,22 @@ export default function AdminScreen() {
   const [resTitle, setResTitle] = useState("");
   const [resDesc, setResDesc] = useState("");
   const [resUrl, setResUrl] = useState("");
+
+  // Notifications
+  const [notifTitle, setNotifTitle] = useState("");
+  const [notifBody, setNotifBody] = useState("");
+  const [notifType, setNotifType] = useState("announcement");
+  const [notifSending, setNotifSending] = useState(false);
+  const [notifStats, setNotifStats] = useState<{ subscribers: number } | null>(null);
+
+  React.useEffect(() => {
+    if (isAdmin) {
+      fetch("/api/notifications/stats")
+        .then((r) => r.json())
+        .then((d) => setNotifStats(d))
+        .catch(() => {});
+    }
+  }, [isAdmin]);
 
   const topPadding = Platform.OS === "web" ? 52 : insets.top;
   const bottomPadding = Platform.OS === "web" ? 34 : 0;
@@ -200,6 +216,7 @@ export default function AdminScreen() {
     { key: "events", label: "Events", icon: "calendar" },
     { key: "resources", label: "Resources", icon: "book-open" },
     { key: "prayers", label: "Prayers", icon: "heart" },
+    { key: "notifications", label: "Notifs", icon: "bell" },
     { key: "settings", label: "Settings", icon: "settings" },
   ];
 
@@ -345,6 +362,159 @@ export default function AdminScreen() {
                 </View>
               ))
             )}
+          </View>
+        )}
+
+        {/* ===== NOTIFICATIONS TAB ===== */}
+        {tab === "notifications" && (
+          <View style={{ gap: 14 }}>
+            {/* Subscriber count */}
+            <View style={[styles.settingGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.settingGroupTitle, { color: colors.foreground }]}>Push Subscribers</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#E84C1E22", alignItems: "center", justifyContent: "center" }}>
+                  <Feather name="bell" size={18} color="#E84C1E" />
+                </View>
+                <Text style={{ fontSize: 28, fontWeight: "700", color: "#E84C1E", fontFamily: "Inter_700Bold" }}>
+                  {notifStats?.subscribers ?? "—"}
+                </Text>
+                <Text style={{ fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                  devices subscribed
+                </Text>
+              </View>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>
+                The server auto-notifies all subscribers when a live stream starts or a new video is posted. Use the form below to send custom announcements.
+              </Text>
+            </View>
+
+            {/* Quick Live Alert */}
+            <View style={[styles.settingGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.settingGroupTitle, { color: colors.foreground }]}>Quick Live Alert</Text>
+              <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginBottom: 4 }}>
+                Instantly notify all subscribers that you're going live.
+              </Text>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: "#DC2626" }]}
+                onPress={async () => {
+                  Alert.alert("Send Live Alert?", "This will notify all subscribers that Dahinchu Agni is LIVE NOW.", [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Send",
+                      onPress: async () => {
+                        try {
+                          const r = await fetch("/api/notifications/send-live", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ passcode: "DAFIRE94" }),
+                          });
+                          const d = await r.json() as { sent?: number };
+                          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                          Alert.alert("Sent!", `Live alert delivered to ${d.sent ?? 0} subscribers.`);
+                        } catch {
+                          Alert.alert("Error", "Could not send notification.");
+                        }
+                      },
+                    },
+                  ]);
+                }}
+              >
+                <Feather name="radio" size={16} color="#FFFFFF" />
+                <Text style={styles.addBtnText}>🔴 Send LIVE NOW Alert</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Custom Notification */}
+            <View style={[styles.settingGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.settingGroupTitle, { color: colors.foreground }]}>Send Custom Notification</Text>
+              <TextInput
+                style={[styles.settingInput, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background }]}
+                placeholder="Notification title"
+                placeholderTextColor={colors.mutedForeground}
+                value={notifTitle}
+                onChangeText={setNotifTitle}
+              />
+              <TextInput
+                style={[styles.settingTextarea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.background, marginTop: 8 }]}
+                placeholder="Notification message..."
+                placeholderTextColor={colors.mutedForeground}
+                value={notifBody}
+                onChangeText={setNotifBody}
+                multiline
+                numberOfLines={3}
+                textAlignVertical="top"
+              />
+              {/* Type picker */}
+              <View style={{ flexDirection: "row", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                {(["announcement", "video", "event", "resource"] as const).map((t) => (
+                  <TouchableOpacity
+                    key={t}
+                    onPress={() => setNotifType(t)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 20,
+                      borderWidth: 1.5,
+                      borderColor: notifType === t ? "#E84C1E" : colors.border,
+                      backgroundColor: notifType === t ? "#E84C1E15" : "transparent",
+                    }}
+                  >
+                    <Text style={{ fontSize: 11, color: notifType === t ? "#E84C1E" : colors.mutedForeground, fontFamily: "Inter_500Medium" }}>
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: "#7C3AED", marginTop: 10, opacity: notifSending ? 0.6 : 1 }]}
+                disabled={notifSending || !notifTitle.trim() || !notifBody.trim()}
+                onPress={async () => {
+                  if (!notifTitle.trim() || !notifBody.trim()) {
+                    Alert.alert("Required", "Please enter a title and message.");
+                    return;
+                  }
+                  setNotifSending(true);
+                  try {
+                    const r = await fetch("/api/notifications/send", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ passcode: "DAFIRE94", title: notifTitle.trim(), body: notifBody.trim(), type: notifType }),
+                    });
+                    const d = await r.json() as { sent?: number; error?: string };
+                    if (d.error) throw new Error(d.error);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    Alert.alert("Sent!", `Notification delivered to ${d.sent ?? 0} subscribers.`);
+                    setNotifTitle("");
+                    setNotifBody("");
+                  } catch {
+                    Alert.alert("Error", "Could not send notification.");
+                  }
+                  setNotifSending(false);
+                }}
+              >
+                <Feather name="send" size={16} color="#FFFFFF" />
+                <Text style={styles.addBtnText}>{notifSending ? "Sending..." : "Send to All Subscribers"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Auto-notification info */}
+            <View style={[styles.settingGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <Text style={[styles.settingGroupTitle, { color: colors.foreground }]}>Automatic Notifications</Text>
+              {[
+                { icon: "radio", color: "#DC2626", label: "🔴 LIVE NOW", desc: "Sent automatically when your channel goes live" },
+                { icon: "video", color: "#2563EB", label: "🎬 New Message", desc: "Sent when a new video is posted to YouTube" },
+              ].map((item) => (
+                <View key={item.label} style={{ flexDirection: "row", gap: 10, alignItems: "flex-start" }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: item.color + "22", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+                    <Feather name={item.icon as any} size={13} color={item.color} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>{item.label}</Text>
+                    <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular" }}>{item.desc}</Text>
+                  </View>
+                  <Feather name="check-circle" size={14} color="#059669" />
+                </View>
+              ))}
+            </View>
           </View>
         )}
 

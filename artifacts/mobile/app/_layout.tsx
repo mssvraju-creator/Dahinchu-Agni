@@ -20,6 +20,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AdminProvider } from "@/context/AdminContext";
 import { PrayerProvider } from "@/context/PrayerContext";
 import { SettingsProvider } from "@/context/SettingsContext";
+import { useNotifications, handleInitialNotification } from "@/hooks/useNotifications";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -38,6 +39,14 @@ function RootLayoutNav() {
       <Stack.Screen name="+not-found" />
     </Stack>
   );
+}
+
+function NotificationBootstrap() {
+  useNotifications();
+  useEffect(() => {
+    handleInitialNotification();
+  }, []);
+  return null;
 }
 
 export default function RootLayout() {
@@ -66,6 +75,7 @@ export default function RootLayout() {
               <PrayerProvider>
                 <GestureHandlerRootView style={{ flex: 1 }}>
                   <KeyboardProvider>
+                    <NotificationBootstrap />
                     <RootLayoutNav />
                   </KeyboardProvider>
                 </GestureHandlerRootView>

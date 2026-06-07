@@ -14,9 +14,17 @@
       "backgroundColor": "#0B2A7A"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "org.dahinchuagni.app",
+      "infoPlist": {
+        "UIBackgroundModes": ["remote-notification"]
+      }
     },
-    "android": {},
+    "android": {
+      "package": "org.dahinchuagni.app",
+      "googleServicesFile": "./google-services.json",
+      "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "WAKE_LOCK"]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
@@ -28,8 +36,22 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#E84C1E",
+          "defaultChannel": "dahinchu-agni",
+          "sounds": []
+        }
+      ]
     ],
+    "extra": {
+      "eas": {
+        "projectId": "replace-with-your-eas-project-id"
+      }
+    },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true

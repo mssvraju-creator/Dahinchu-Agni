@@ -100,18 +100,16 @@ router.get("/youtube/videos", async (req: Request, res: Response) => {
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
 
   let sent = false;
+  let resolveOnSend: () => void = () => {};
+  const done = new Promise<void>((resolve) => { resolveOnSend = resolve; });
+
   function send(videos: any[], hasMore: boolean) {
     if (sent || res.headersSent) return;
     sent = true;
     res.setHeader("Cache-Control", "public, max-age=180");
     res.json({ videos, page, hasMore });
+    resolveOnSend();
   }
-
-  // Promise that resolves when we send; used for cleanup
-  const done = new Promise<void>((resolve) => {
-    const originalSend = send;
-    send = (...args) => { originalSend(...args); resolve(); };
-  });
 
   // Fallback: respond empty after 6 seconds
   const fallbackTimer = setTimeout(() => send([], false), 6000);

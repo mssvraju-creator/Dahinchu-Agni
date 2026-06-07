@@ -57,6 +57,8 @@
   },
   "dependencies": {
     "@expo-google-fonts/dm-serif-display": "^0.4.2",
+    "expo-device": "^56.0.4",
+    "expo-notifications": "^56.0.16",
     "react-native-web-webview": "^1.0.2",
     "react-native-webview": "^13.16.1",
     "react-native-youtube-iframe": "^2.4.1"

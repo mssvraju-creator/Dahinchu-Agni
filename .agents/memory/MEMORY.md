@@ -1,0 +1,1 @@
+- [expo-notifications web guards](expo-notifications-web.md) — several APIs crash on web; must guard with Platform.OS !== 'web' and cast PermissionResponse types
