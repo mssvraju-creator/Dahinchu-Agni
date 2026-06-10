@@ -109,6 +109,7 @@ export function MinistryHeader({ subtitle, showBack, onBack, isLive, onLiveBellP
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 18,
+    
     paddingBottom: 16,
   },
   content: {
