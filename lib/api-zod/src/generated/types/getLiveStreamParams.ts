@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
-}
+export type GetLiveStreamParams = {
+/**
+ * YouTube channel ID (defaults to ministry channel)
+ */
+channelId?: string;
+};

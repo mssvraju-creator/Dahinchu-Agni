@@ -10,6 +10,10 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: youtube
+    description: YouTube video operations
+  - name: notifications
+    description: Push notification operations
 paths:
   /healthz:
     get:
@@ -24,6 +28,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /youtube/videos:
+    get:
+      operationId: getVideos
+      tags: [youtube]
+      summary: Get paginated YouTube videos
+      parameters:
+        - in: query
+          name: channelId
+          schema:
+            type: string
+          description: YouTube channel ID (defaults to ministry channel)
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number
+      responses:
+        "200":
+          description: Video list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoPage"
+
+  /youtube/live:
+    get:
+      operationId: getLiveStream
+      tags: [youtube]
+      summary: Check if the channel is currently live
+      parameters:
+        - in: query
+          name: channelId
+          schema:
+            type: string
+          description: YouTube channel ID (defaults to ministry channel)
+      responses:
+        "200":
+          description: Live stream status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LiveStatus"
+
+  /notifications/stats:
+    get:
+      operationId: getNotificationStats
+      tags: [notifications]
+      summary: Get push notification subscriber count
+      responses:
+        "200":
+          description: Notification stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationStats"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +97,67 @@ components:
       required:
         - status
 
+    VideoItem:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        thumbnailUrl:
+          type: string
+        publishedAt:
+          type: string
+        duration:
+          type: ["string", "null"]
+        viewCount:
+          type: ["string", "null"]
+        isLive:
+          type: boolean
+        isShort:
+          type: boolean
+      required:
+        - id
+        - title
+        - thumbnailUrl
+        - publishedAt
+        - isLive
+        - isShort
+
+    VideoPage:
+      type: object
+      properties:
+        videos:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoItem"
+        page:
+          type: integer
+        hasMore:
+          type: boolean
+      required:
+        - videos
+        - page
+        - hasMore
+
+    LiveStatus:
+      type: object
+      properties:
+        isLive:
+          type: boolean
+        title:
+          type: ["string", "null"]
+        videoId:
+          type: ["string", "null"]
+        thumbnailUrl:
+          type: ["string", "null"]
+      required:
+        - isLive
+
+    NotificationStats:
+      type: object
+      properties:
+        subscribers:
+          type: integer
+      required:
+        - subscribers
