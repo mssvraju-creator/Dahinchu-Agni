@@ -49,29 +49,29 @@
   --radius-xl: 0.75rem;
 }
 
+/* ── Light mode (default) ── */
 :root {
-  /* Enforce Dark Theme Always for this design */
-  --background: 0 0% 5%;
-  --foreground: 0 0% 98%;
+  --background: 30 20% 97%;
+  --foreground: 223 40% 12%;
 
-  --card: 0 0% 8%;
-  --card-foreground: 0 0% 98%;
-  --card-border: 0 0% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 223 40% 12%;
+  --card-border: 0 0% 88%;
 
-  --popover: 0 0% 8%;
-  --popover-foreground: 0 0% 98%;
-  --popover-border: 0 0% 15%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 223 40% 12%;
+  --popover-border: 0 0% 88%;
 
-  /* Burning orange-amber */
+  /* Burning orange */
   --primary: 14 82% 51%;
   --primary-foreground: 0 0% 100%;
 
-  /* Navy Accent */
+  /* Navy */
   --secondary: 223 83% 26%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 0 0% 12%;
-  --muted-foreground: 0 0% 65%;
+  --muted: 0 0% 94%;
+  --muted-foreground: 0 0% 42%;
 
   --accent: 25 95% 53%;
   --accent-foreground: 0 0% 100%;
@@ -79,8 +79,8 @@
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 0 0% 15%;
-  --input: 0 0% 15%;
+  --border: 0 0% 86%;
+  --input: 0 0% 92%;
   --ring: 14 82% 51%;
 
   --radius: 0.5rem;
@@ -90,6 +90,7 @@
   --app-font-mono: 'Space Mono', monospace;
 }
 
+/* ── Dark mode ── */
 .dark {
   --background: 0 0% 5%;
   --foreground: 0 0% 98%;
@@ -158,9 +159,9 @@
 }
 
 .input-field {
-  @apply w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 transition-colors text-sm;
+  @apply w-full px-4 py-3 rounded-xl bg-muted border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors text-sm;
 }
 
 .input-field option {
-  @apply bg-background text-white;
+  @apply bg-background text-foreground;
 }

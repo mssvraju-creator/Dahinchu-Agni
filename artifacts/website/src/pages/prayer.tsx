@@ -18,34 +18,34 @@ function PrayerCard({ prayer }: { prayer: PrayerRequest }) {
   return (
     <div
       className={`flex flex-col gap-3 p-4 rounded-2xl border transition-all ${
-        prayer.isPrayed ? "bg-green-500/5 border-green-500/20 opacity-70" : "bg-card border-white/10"
+        prayer.isPrayed ? "bg-green-50 border-green-200 opacity-80" : "bg-card border-border"
       }`}
       data-testid={`prayer-card-${prayer.id}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
             <span className="text-primary font-bold text-sm">{prayer.isAnonymous ? "A" : prayer.name[0]?.toUpperCase()}</span>
           </div>
           <div>
-            <p className="font-semibold text-white text-sm">{prayer.isAnonymous ? "Anonymous" : prayer.name}</p>
-            <div className="flex items-center gap-1.5 text-xs text-white/40">
+            <p className="font-semibold text-foreground text-sm">{prayer.isAnonymous ? "Anonymous" : prayer.name}</p>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock size={10} />
               <span>{timeAgo(prayer.createdAt)}</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {prayer.isPublic ? <Globe size={12} className="text-white/30" /> : <Lock size={12} className="text-white/30" />}
+          {prayer.isPublic ? <Globe size={12} className="text-muted-foreground/50" /> : <Lock size={12} className="text-muted-foreground/50" />}
           {prayer.isPrayed && (
-            <div className="flex items-center gap-1 text-xs text-green-400">
+            <div className="flex items-center gap-1 text-xs text-green-600">
               <CheckCircle2 size={12} />
               <span>Prayed</span>
             </div>
           )}
         </div>
       </div>
-      <p className="text-white/70 leading-relaxed text-sm">{prayer.request}</p>
+      <p className="text-foreground/70 leading-relaxed text-sm">{prayer.request}</p>
     </div>
   );
 }
@@ -91,26 +91,26 @@ export default function Prayer() {
 
       {/* Submit form */}
       <div className="mx-4 mt-4">
-        <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <Send size={11} /> Submit a Prayer Request
         </p>
 
         {submitted ? (
-          <div className="flex flex-col items-center gap-3 py-10 rounded-2xl bg-card border border-white/10 text-center" data-testid="prayer-submitted">
-            <CheckCircle2 size={40} className="text-green-400" />
-            <p className="text-lg font-bold text-white">Prayer Submitted!</p>
-            <p className="text-white/50 text-sm">We are standing with you in prayer.</p>
+          <div className="flex flex-col items-center gap-3 py-10 rounded-2xl bg-card border border-border text-center" data-testid="prayer-submitted">
+            <CheckCircle2 size={40} className="text-green-500" />
+            <p className="text-lg font-bold text-foreground">Prayer Submitted!</p>
+            <p className="text-muted-foreground text-sm">We are standing with you in prayer.</p>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex flex-col gap-3" data-testid="prayer-form">
-            <label className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-card border border-white/10 cursor-pointer">
+            <label className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-card border border-border cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.isAnonymous}
                 onChange={(e) => setForm((f) => ({ ...f, isAnonymous: e.target.checked }))}
                 className="w-4 h-4 accent-primary"
               />
-              <span className="text-white/70 text-sm">Submit anonymously</span>
+              <span className="text-foreground/70 text-sm">Submit anonymously</span>
             </label>
 
             {!form.isAnonymous && (
@@ -134,14 +134,14 @@ export default function Prayer() {
               data-testid="input-prayer-request"
             />
 
-            <label className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-card border border-white/10 cursor-pointer">
+            <label className="flex items-center gap-2.5 p-3.5 rounded-2xl bg-card border border-border cursor-pointer">
               <input
                 type="checkbox"
                 checked={form.isPublic}
                 onChange={(e) => setForm((f) => ({ ...f, isPublic: e.target.checked }))}
                 className="w-4 h-4 accent-primary"
               />
-              <span className="text-white/70 text-sm">Show on public prayer wall</span>
+              <span className="text-foreground/70 text-sm">Show on public prayer wall</span>
             </label>
 
             <Button type="submit" className="bg-primary text-white hover:bg-primary/90 fire-glow h-12 rounded-2xl" data-testid="btn-submit-prayer">
@@ -155,7 +155,7 @@ export default function Prayer() {
       {/* Community wall */}
       {publicPrayers.length > 0 && (
         <div className="mx-4 mt-6 pb-4">
-          <p className="text-white/50 text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-1.5">
+          <p className="text-muted-foreground text-xs font-semibold uppercase tracking-widest mb-3 flex items-center gap-1.5">
             <Heart size={11} /> Community Prayer Wall · {publicPrayers.length}
           </p>
           <div className="flex flex-col gap-2.5" data-testid="prayer-wall">

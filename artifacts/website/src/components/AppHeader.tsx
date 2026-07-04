@@ -15,19 +15,19 @@ export function AppHeader({ subtitle }: AppHeaderProps) {
   );
 
   return (
-    <header className="sticky top-0 z-50 flex items-center justify-between px-4 h-14 bg-background/95 backdrop-blur-md border-b border-white/8">
+    <header className="sticky top-0 z-50 flex items-center justify-between px-4 h-14 bg-background/95 backdrop-blur-md border-b border-border">
       <Link href="/" className="flex items-center gap-2.5">
-        <img src="/da-logo-dark.png" alt="DA Logo" className="h-8 w-auto" />
+        <img src="/da-logo.png" alt="DA Logo" className="h-8 w-auto" />
         <div>
-          <p className="text-white font-bold text-sm leading-tight tracking-tight">DAHINCHU AGNI</p>
-          {subtitle && <p className="text-white/40 text-xs leading-none">{subtitle}</p>}
+          <p className="text-foreground font-bold text-sm leading-tight tracking-tight">DAHINCHU AGNI</p>
+          {subtitle && <p className="text-muted-foreground text-xs leading-none">{subtitle}</p>}
         </div>
       </Link>
 
       <div className="flex items-center gap-2">
         {liveStatus?.isLive && (
           <a
-            href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+            href={liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : "#"}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-600 animate-pulse"

@@ -102,14 +102,14 @@ export default function Home() {
           href={`${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
-          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-white/10"
+          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-border"
         >
-          <div className="w-2 h-2 rounded-full bg-white/30 shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/40 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-semibold">No Live Stream Right Now</p>
-            <p className="text-white/50 text-xs mt-0.5">Tap to check our YouTube channel</p>
+            <p className="text-foreground text-sm font-semibold">No Live Stream Right Now</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Tap to check our YouTube channel</p>
           </div>
-          <ExternalLink size={15} className="text-white/30 shrink-0" />
+          <ExternalLink size={15} className="text-muted-foreground/50 shrink-0" />
         </a>
       )}
 
@@ -129,10 +129,10 @@ export default function Home() {
         {MINISTRY.stats.map((s) => (
           <div
             key={s.label}
-            className="flex-1 flex flex-col items-center gap-0.5 py-3 rounded-2xl bg-card border border-white/10"
+            className="flex-1 flex flex-col items-center gap-0.5 py-3 rounded-2xl bg-card border border-border"
           >
             <span className="text-primary text-lg font-black">{s.number}</span>
-            <span className="text-white/50 text-[9px] uppercase tracking-wide text-center leading-tight">{s.label}</span>
+            <span className="text-muted-foreground text-[9px] uppercase tracking-wide text-center leading-tight">{s.label}</span>
           </div>
         ))}
       </div>
@@ -162,19 +162,19 @@ export default function Home() {
       {/* Latest Messages */}
       <div className="mx-4 mt-5">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white text-xl font-black">Latest Messages</h2>
+          <h2 className="text-foreground text-xl font-black">Latest Messages</h2>
           <Link href="/media" className="text-primary text-sm font-medium">See all</Link>
         </div>
 
         {videosLoading ? (
-          <div className="rounded-2xl bg-card border border-white/10 p-5 flex items-center justify-center">
+          <div className="rounded-2xl bg-card border border-border p-5 flex items-center justify-center">
             <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span className="text-white/50 text-sm ml-3">Loading messages…</span>
+            <span className="text-muted-foreground text-sm ml-3">Loading messages…</span>
           </div>
         ) : latestVideos.length === 0 ? (
-          <div className="rounded-2xl bg-card border border-white/10 border-dashed p-6 flex flex-col items-center gap-2">
-            <PlayCircle size={28} className="text-white/30" />
-            <p className="text-white text-sm font-semibold">No videos loaded</p>
+          <div className="rounded-2xl bg-card border border-border border-dashed p-6 flex flex-col items-center gap-2">
+            <PlayCircle size={28} className="text-muted-foreground/40" />
+            <p className="text-foreground text-sm font-semibold">No videos loaded</p>
             <a href={MINISTRY.youtubeChannelUrl} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-1.5 mt-1 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold">
               <ExternalLink size={12} />
@@ -188,7 +188,7 @@ export default function Home() {
               href={`https://www.youtube.com/watch?v=${latestVideos[0].id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="block rounded-2xl overflow-hidden bg-card border border-white/10 mb-2.5 group"
+              className="block rounded-2xl overflow-hidden bg-card border border-border mb-2.5 group"
               data-testid={`video-featured-${latestVideos[0].id}`}
             >
               <div className="relative aspect-video">
@@ -222,7 +222,7 @@ export default function Home() {
                   href={`https://www.youtube.com/watch?v=${v.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex gap-3 p-2.5 rounded-2xl bg-card border border-white/10 group items-center"
+                  className="flex gap-3 p-2.5 rounded-2xl bg-card border border-border group items-center"
                   data-testid={`video-card-${v.id}`}
                 >
                   <div className="relative w-28 aspect-video rounded-xl overflow-hidden shrink-0">
@@ -239,8 +239,8 @@ export default function Home() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
-                    <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
-                    <p className="text-white/40 text-xs mt-1">{safeDate(v.publishedAt)}</p>
+                    <p className="text-foreground text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
+                    <p className="text-muted-foreground text-xs mt-1">{safeDate(v.publishedAt)}</p>
                   </div>
                 </a>
               ))}
@@ -252,14 +252,14 @@ export default function Home() {
       {/* Upcoming Events */}
       <div className="mx-4 mt-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white text-xl font-black">Upcoming Events</h2>
+          <h2 className="text-foreground text-xl font-black">Upcoming Events</h2>
           <Link href="/events" className="text-primary text-sm font-medium">See all</Link>
         </div>
 
         {upcomingEvents.length === 0 ? (
-          <div className="rounded-2xl bg-card border border-white/10 border-dashed p-6 flex flex-col items-center gap-2">
-            <Calendar size={28} className="text-white/30" />
-            <p className="text-white text-sm font-semibold">No upcoming events</p>
+          <div className="rounded-2xl bg-card border border-border border-dashed p-6 flex flex-col items-center gap-2">
+            <Calendar size={28} className="text-muted-foreground/40" />
+            <p className="text-foreground text-sm font-semibold">No upcoming events</p>
           </div>
         ) : (
           <div className="flex flex-col gap-2">
@@ -267,15 +267,15 @@ export default function Home() {
               <Link
                 key={e.id}
                 href="/events"
-                className="flex gap-3 p-3.5 rounded-2xl bg-card border border-white/10 items-start"
+                className="flex gap-3 p-3.5 rounded-2xl bg-card border border-border items-start"
                 data-testid={`event-card-home-${e.id}`}
               >
-                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Calendar size={18} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white text-sm font-semibold leading-snug line-clamp-1">{e.title}</p>
-                  <div className="flex items-center gap-3 mt-1 text-white/50 text-xs">
+                  <p className="text-foreground text-sm font-semibold leading-snug line-clamp-1">{e.title}</p>
+                  <div className="flex items-center gap-3 mt-1 text-muted-foreground text-xs">
                     <span className="flex items-center gap-1"><Clock size={10} />{formatShortDate(e.date)}</span>
                     <span className="flex items-center gap-1"><MapPin size={10} />{e.location.split(",")[0]}</span>
                   </div>
@@ -292,8 +292,7 @@ export default function Home() {
           href={MINISTRY.youtubeChannelUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-3 p-4 rounded-2xl"
-          style={{ background: "linear-gradient(90deg,#1C1C1C,#2D1515)" }}
+          className="flex items-center gap-3 p-4 rounded-2xl bg-secondary"
           data-testid="calvary-tv-banner"
         >
           <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#E84C1E22" }}>

@@ -18,17 +18,17 @@ export function BottomTabBar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex bg-background/95 backdrop-blur-md border-t border-white/10 pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex bg-background/95 backdrop-blur-md border-t border-border pb-safe">
       {TABS.map(({ href, label, icon: Icon }) => {
         const active = isActive(href);
         return (
           <Link key={href} href={href} className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 min-h-[56px]">
             <Icon
               size={22}
-              className={`transition-colors ${active ? "text-primary" : "text-white/40"}`}
+              className={`transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}
               strokeWidth={active ? 2.5 : 1.8}
             />
-            <span className={`text-[10px] font-medium transition-colors ${active ? "text-primary" : "text-white/40"}`}>
+            <span className={`text-[10px] font-medium transition-colors ${active ? "text-primary" : "text-muted-foreground"}`}>
               {label}
             </span>
           </Link>

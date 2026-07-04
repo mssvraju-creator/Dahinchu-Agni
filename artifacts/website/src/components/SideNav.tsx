@@ -35,7 +35,7 @@ function NavItem({ href, label, icon: Icon }: { href: string; label: string; ico
       <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer group ${
         active
           ? "bg-primary/10 text-primary"
-          : "text-white/50 hover:text-white hover:bg-white/5"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted"
       }`}>
         <Icon size={20} strokeWidth={active ? 2.5 : 1.8} className="shrink-0" />
         <span className={`text-sm font-medium ${active ? "text-primary" : ""}`}>{label}</span>
@@ -51,49 +51,43 @@ export function SideNav() {
   );
 
   return (
-    <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-56 xl:w-64 bg-background border-r border-white/10 z-50 overflow-y-auto">
-      {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-white/10 shrink-0">
-        <img src="/da-logo-dark.png" alt="DA Logo" className="h-9 w-auto" />
+    <aside className="hidden lg:flex flex-col fixed left-0 top-0 bottom-0 w-56 xl:w-64 bg-background border-r border-border z-50 overflow-y-auto">
+      <div className="flex items-center gap-2.5 px-4 py-5 border-b border-border shrink-0">
+        <img src="/da-logo.png" alt="DA Logo" className="h-9 w-auto" />
         <div className="min-w-0">
-          <p className="text-white font-black text-sm leading-tight tracking-tight">DAHINCHU AGNI</p>
-          <p className="text-white/40 text-[10px] leading-none mt-0.5">Consuming Fire · Igniting Nations</p>
+          <p className="text-foreground font-black text-sm leading-tight tracking-tight">DAHINCHU AGNI</p>
+          <p className="text-muted-foreground text-[10px] leading-none mt-0.5">Consuming Fire · Igniting Nations</p>
         </div>
       </div>
 
-      {/* Live badge */}
       {liveStatus?.isLive && (
         <a
-          href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+          href={liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : "#"}
           target="_blank"
           rel="noopener noreferrer"
-          className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-red-600/20 border border-red-500/30"
+          className="mx-3 mt-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 border border-red-200"
         >
-          <Radio size={13} className="text-red-400 animate-pulse shrink-0" />
+          <Radio size={13} className="text-red-500 animate-pulse shrink-0" />
           <div className="min-w-0">
-            <p className="text-red-400 text-[10px] font-bold tracking-widest uppercase">Live Now</p>
-            <p className="text-white/70 text-xs truncate">{liveStatus.title ?? "Live Service"}</p>
+            <p className="text-red-500 text-[10px] font-bold tracking-widest uppercase">Live Now</p>
+            <p className="text-foreground/70 text-xs truncate">{liveStatus.title ?? "Live Service"}</p>
           </div>
         </a>
       )}
 
-      {/* Primary nav */}
       <nav className="flex flex-col gap-0.5 px-2 mt-4">
         {PRIMARY_TABS.map((tab) => <NavItem key={tab.href} {...tab} />)}
       </nav>
 
-      {/* Divider */}
-      <div className="mx-3 my-3 border-t border-white/10" />
+      <div className="mx-3 my-3 border-t border-border" />
 
-      {/* Secondary nav */}
       <nav className="flex flex-col gap-0.5 px-2">
         {SECONDARY_TABS.map((tab) => <NavItem key={tab.href} {...tab} />)}
         <NavItem href="/admin" label="Admin" icon={Shield} />
       </nav>
 
-      {/* Footer */}
-      <div className="mt-auto px-4 pb-5 pt-3 border-t border-white/10 shrink-0">
-        <p className="text-white/20 text-[10px] text-center leading-relaxed">
+      <div className="mt-auto px-4 pb-5 pt-3 border-t border-border shrink-0">
+        <p className="text-muted-foreground/60 text-[10px] text-center leading-relaxed">
           © 2025 Dahinchu Agni Ministries{"\n"}All rights reserved.
         </p>
       </div>

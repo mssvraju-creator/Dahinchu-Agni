@@ -14,18 +14,8 @@ function getVideoCategory(v: VideoItem): string {
   if (v.isShort) return "short";
   if (v.isLive) return "live";
   const title = (v.title || "").toLowerCase();
-  // Live detection by title (for RSS-sourced videos without isLive)
-  if (
-    title.includes("live") || title.includes("streaming") ||
-    title.includes("live streaming") || title.includes("broadcast")
-  ) return "live";
-  // Sermon detection
-  if (
-    title.includes("sermon") || title.includes("message") ||
-    title.includes("gospel") || title.includes("preach") ||
-    title.includes("word of god") || title.includes("ministry")
-  ) return "sermon";
-  // Shorts by duration string (e.g. "0:45")
+  if (title.includes("live") || title.includes("streaming") || title.includes("broadcast")) return "live";
+  if (title.includes("sermon") || title.includes("message") || title.includes("gospel") || title.includes("preach") || title.includes("ministry")) return "sermon";
   if (v.duration) {
     const parts = v.duration.split(":");
     if (parts.length === 2 && parseInt(parts[0]) === 0 && parseInt(parts[1]) <= 65) return "short";
@@ -103,15 +93,15 @@ export default function Media() {
           href={`${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
-          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-white/10"
+          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-border"
           data-testid="media-no-live"
         >
-          <div className="w-2 h-2 rounded-full bg-white/30 shrink-0" />
+          <div className="w-2 h-2 rounded-full bg-muted-foreground/30 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-white text-sm font-semibold">No Live Stream Right Now</p>
-            <p className="text-white/50 text-xs mt-0.5">Tap to check our YouTube channel for upcoming streams</p>
+            <p className="text-foreground text-sm font-semibold">No Live Stream Right Now</p>
+            <p className="text-muted-foreground text-xs mt-0.5">Tap to check our YouTube channel for upcoming streams</p>
           </div>
-          <ExternalLink size={15} className="text-white/30 shrink-0" />
+          <ExternalLink size={15} className="text-muted-foreground/40 shrink-0" />
         </a>
       )}
 
@@ -124,7 +114,7 @@ export default function Media() {
             className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
               activeTab === tab
                 ? "bg-primary text-white"
-                : "bg-card border border-white/10 text-white/60"
+                : "bg-card border border-border text-muted-foreground"
             }`}
             data-testid={`tab-${tab.toLowerCase()}`}
           >
@@ -133,28 +123,24 @@ export default function Media() {
         ))}
       </div>
 
-      {/* Count */}
       {!isLoading && filtered.length > 0 && (
-        <p className="px-4 text-white/40 text-xs mb-1">
+        <p className="px-4 text-muted-foreground text-xs mb-1">
           {filtered.length} video{filtered.length !== 1 ? "s" : ""}
         </p>
       )}
 
-      {/* Video List */}
       <div className="px-4 flex flex-col gap-2.5 pb-4">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 py-12">
             <Loader2 size={28} className="text-primary animate-spin" />
-            <p className="text-white/50 text-sm">Loading videos…</p>
+            <p className="text-muted-foreground text-sm">Loading videos…</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 rounded-2xl bg-card border border-white/10 border-dashed">
-            <PlayCircle size={32} className="text-white/30" />
-            <p className="text-white text-sm font-semibold">No {activeTab} videos yet</p>
-            <p className="text-white/40 text-xs text-center px-8">
-              {activeTab === "Lives"
-                ? "Live streams will appear here when the channel goes live."
-                : "More content coming soon."}
+          <div className="flex flex-col items-center gap-2 py-12 rounded-2xl bg-card border border-border border-dashed">
+            <PlayCircle size={32} className="text-muted-foreground/40" />
+            <p className="text-foreground text-sm font-semibold">No {activeTab} videos yet</p>
+            <p className="text-muted-foreground text-xs text-center px-8">
+              {activeTab === "Lives" ? "Live streams will appear here when the channel goes live." : "More content coming soon."}
             </p>
           </div>
         ) : (
@@ -165,7 +151,7 @@ export default function Media() {
                 href={`https://www.youtube.com/watch?v=${filtered[0].id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block rounded-2xl overflow-hidden bg-card border border-white/10 group"
+                className="block rounded-2xl overflow-hidden bg-card border border-border group"
                 data-testid={`media-featured-${filtered[0].id}`}
               >
                 <div className="relative aspect-video">
@@ -208,7 +194,7 @@ export default function Media() {
                 href={`https://www.youtube.com/watch?v=${v.id}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex gap-3 p-2.5 rounded-2xl bg-card border border-white/10 group items-center"
+                className="flex gap-3 p-2.5 rounded-2xl bg-card border border-border group items-center"
                 data-testid={`media-video-${v.id}`}
               >
                 <div className="relative w-28 aspect-video rounded-xl overflow-hidden shrink-0">
@@ -223,13 +209,13 @@ export default function Media() {
                       <Radio size={7} /> LIVE
                     </div>
                   )}
-                  {v.isShort && (
+                  {v.isShort && !v.isLive && (
                     <div className="absolute top-1 left-1 px-1 py-0.5 bg-white/20 rounded text-white text-[8px] font-bold">#Short</div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0 py-0.5">
-                  <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
-                  <div className="flex items-center gap-2 mt-1 text-white/40 text-xs">
+                  <p className="text-foreground text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
+                  <div className="flex items-center gap-2 mt-1 text-muted-foreground text-xs">
                     <span>{safeDate(v.publishedAt)}</span>
                     {v.viewCount && <span>· {Number(v.viewCount).toLocaleString()} views</span>}
                   </div>
@@ -237,12 +223,11 @@ export default function Media() {
               </a>
             ))}
 
-            {/* Load More */}
             {hasMore && (
               <button
                 onClick={() => setPage((p) => p + 1)}
                 disabled={isFetching}
-                className="py-3.5 rounded-2xl border border-white/10 text-primary text-sm font-semibold flex items-center justify-center gap-2"
+                className="py-3.5 rounded-2xl border border-border text-primary text-sm font-semibold flex items-center justify-center gap-2 bg-card"
                 data-testid="btn-load-more"
               >
                 {isFetching ? <Loader2 size={16} className="animate-spin" /> : "Load more videos"}
