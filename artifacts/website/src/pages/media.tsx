@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useGetVideos, useGetLiveStream, getGetLiveStreamQueryKey } from "@workspace/api-client-react";
 import { AppShell } from "@/components/AppShell";
 import { MINISTRY } from "@/constants/ministry";
-import { PlayCircle, ExternalLink, Loader2 } from "lucide-react";
+import { PlayCircle, ExternalLink, Loader2, Radio } from "lucide-react";
 import type { VideoItem } from "@workspace/api-client-react/src/generated/api.schemas";
 
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
@@ -10,19 +10,26 @@ const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 const TABS = ["All", "Sermons", "Teaching", "Lives", "Shorts"] as const;
 type Tab = typeof TABS[number];
 
-function parseDurationSeconds(dur?: string | null): number {
-  if (!dur) return Infinity;
-  const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!m) return Infinity;
-  return (parseInt(m[1] || "0") * 3600) + (parseInt(m[2] || "0") * 60) + parseInt(m[3] || "0");
-}
-
 function getVideoCategory(v: VideoItem): string {
+  if (v.isShort) return "short";
+  if (v.isLive) return "live";
   const title = (v.title || "").toLowerCase();
-  const secs = parseDurationSeconds(v.duration);
-  if (secs > 0 && secs <= 65) return "short";
-  if (title.includes("live") || title.includes("stream") || title.includes("broadcast")) return "live";
-  if (title.includes("sermon") || title.includes("message") || title.includes("gospel") || title.includes("preach")) return "sermon";
+  // Live detection by title (for RSS-sourced videos without isLive)
+  if (
+    title.includes("live") || title.includes("streaming") ||
+    title.includes("live streaming") || title.includes("broadcast")
+  ) return "live";
+  // Sermon detection
+  if (
+    title.includes("sermon") || title.includes("message") ||
+    title.includes("gospel") || title.includes("preach") ||
+    title.includes("word of god") || title.includes("ministry")
+  ) return "sermon";
+  // Shorts by duration string (e.g. "0:45")
+  if (v.duration) {
+    const parts = v.duration.split(":");
+    if (parts.length === 2 && parseInt(parts[0]) === 0 && parseInt(parts[1]) <= 65) return "short";
+  }
   return "teaching";
 }
 
@@ -30,6 +37,13 @@ function filterByTab(videos: VideoItem[], tab: Tab): VideoItem[] {
   if (tab === "All") return videos;
   const map: Record<Tab, string> = { All: "", Sermons: "sermon", Teaching: "teaching", Lives: "live", Shorts: "short" };
   return videos.filter((v) => getVideoCategory(v) === map[tab]);
+}
+
+function safeDate(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString();
 }
 
 export default function Media() {
@@ -51,10 +65,10 @@ export default function Media() {
     if (data?.videos) {
       setAllVideos((prev) => {
         const newVids = data.videos.filter((v) => !prev.some((p) => p.id === v.id));
-        return [...prev, ...newVids];
+        return page === 1 ? [...data.videos] : [...prev, ...newVids];
       });
     }
-  }, [data]);
+  }, [data, page]);
 
   const filtered = useMemo(() => filterByTab(allVideos, activeTab), [allVideos, activeTab]);
   const hasMore = data?.hasMore ?? false;
@@ -62,30 +76,26 @@ export default function Media() {
   return (
     <AppShell subtitle="Media Center">
       {/* Live / No-live banner */}
-      {isLoading ? (
-        <div className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-white/10">
-          <Loader2 size={14} className="text-primary animate-spin shrink-0" />
-          <p className="text-white/50 text-sm">Checking for live stream…</p>
-        </div>
-      ) : liveStatus?.isLive ? (
+      {liveStatus?.isLive ? (
         <a
-          href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+          href={liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
           className="mx-4 mt-3 flex items-center gap-3 p-3.5 rounded-2xl overflow-hidden"
           style={{ background: "linear-gradient(90deg,#DC2626,#B91C1C)" }}
           data-testid="media-live-banner"
         >
-          <div className="w-7 h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <div className="w-2.5 h-2.5 rounded-full bg-white" />
+          <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+            <div className="absolute inset-0 rounded-full bg-white/20 animate-ping" />
+            <Radio size={16} className="text-white relative" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-bold tracking-widest uppercase">LIVE NOW</p>
-            <p className="text-white/85 text-xs mt-0.5 truncate">{liveStatus.title}</p>
+            <p className="text-white text-[10px] font-bold tracking-widest uppercase">🔴 LIVE NOW</p>
+            <p className="text-white/90 text-sm font-semibold truncate">{liveStatus.title || "Live Service"}</p>
           </div>
           <div className="flex items-center gap-1 bg-white/20 rounded-lg px-2.5 py-1.5 shrink-0">
-            <PlayCircle size={11} className="text-white" />
-            <span className="text-white text-[10px] font-bold">Watch In App</span>
+            <PlayCircle size={12} className="text-white" />
+            <span className="text-white text-[10px] font-bold">Watch</span>
           </div>
         </a>
       ) : (
@@ -142,7 +152,9 @@ export default function Media() {
             <PlayCircle size={32} className="text-white/30" />
             <p className="text-white text-sm font-semibold">No {activeTab} videos yet</p>
             <p className="text-white/40 text-xs text-center px-8">
-              {activeTab === "Lives" ? "Live streams will appear here when the channel goes live." : "More content coming soon."}
+              {activeTab === "Lives"
+                ? "Live streams will appear here when the channel goes live."
+                : "More content coming soon."}
             </p>
           </div>
         ) : (
@@ -162,12 +174,20 @@ export default function Media() {
                   <div className="absolute bottom-3 left-3 right-3">
                     <p className="text-white font-bold text-sm leading-snug line-clamp-2">{filtered[0].title}</p>
                     <div className="flex items-center gap-3 mt-1 text-white/60 text-xs">
-                      <span>{filtered[0].published ? new Date(filtered[0].published).toLocaleDateString() : ""}</span>
+                      <span>{safeDate(filtered[0].publishedAt)}</span>
                       {filtered[0].viewCount && <span>{Number(filtered[0].viewCount).toLocaleString()} views</span>}
                     </div>
                   </div>
-                  <div className="absolute top-3 left-3">
+                  <div className="absolute top-3 left-3 flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded bg-primary text-white text-[10px] font-bold uppercase tracking-wide">Latest</span>
+                    {filtered[0].isLive && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-600 text-white text-[10px] font-bold uppercase">
+                        <Radio size={8} /> Live
+                      </span>
+                    )}
+                    {filtered[0].isShort && (
+                      <span className="px-2 py-0.5 rounded bg-white/20 text-white text-[10px] font-bold uppercase">#Short</span>
+                    )}
                   </div>
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                     <PlayCircle size={22} className="text-white ml-0.5" />
@@ -198,11 +218,19 @@ export default function Media() {
                       {v.duration}
                     </div>
                   )}
+                  {v.isLive && (
+                    <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1 py-0.5 bg-red-600 rounded text-white text-[8px] font-bold">
+                      <Radio size={7} /> LIVE
+                    </div>
+                  )}
+                  {v.isShort && (
+                    <div className="absolute top-1 left-1 px-1 py-0.5 bg-white/20 rounded text-white text-[8px] font-bold">#Short</div>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0 py-0.5">
                   <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
                   <div className="flex items-center gap-2 mt-1 text-white/40 text-xs">
-                    <span>{v.published ? new Date(v.published).toLocaleDateString() : ""}</span>
+                    <span>{safeDate(v.publishedAt)}</span>
                     {v.viewCount && <span>· {Number(v.viewCount).toLocaleString()} views</span>}
                   </div>
                 </div>

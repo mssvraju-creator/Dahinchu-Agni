@@ -4,7 +4,7 @@ import { useGetLiveStream, useGetVideos, getGetLiveStreamQueryKey } from "@works
 import { AppShell } from "@/components/AppShell";
 import { useAdmin } from "@/context/AdminContext";
 import { MINISTRY, BIBLE_VERSES, type MinistryEvent } from "@/constants/ministry";
-import { PlayCircle, Gift, Heart, BookOpen, ExternalLink, Calendar, MapPin, Clock, Tv, Bell } from "lucide-react";
+import { PlayCircle, Gift, Heart, BookOpen, ExternalLink, Calendar, MapPin, Clock, Tv, Bell, Radio } from "lucide-react";
 
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 
@@ -35,6 +35,13 @@ function getNextOccurrenceDate(event: MinistryEvent): string {
 
 function formatShortDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+}
+
+function safeDate(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString();
 }
 
 export default function Home() {
@@ -69,16 +76,16 @@ export default function Home() {
       {/* Live Banner */}
       {liveStatus?.isLive ? (
         <a
-          href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+          href={liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
           className="mx-4 mt-3 flex items-center gap-3 p-3.5 rounded-2xl overflow-hidden relative"
           style={{ background: "linear-gradient(90deg,#DC2626,#991B1B)" }}
           data-testid="banner-live-now"
         >
-          <div className="relative flex items-center justify-center w-7 h-7">
-            <div className="absolute inset-0 rounded-full border-2 border-white/40" />
-            <div className="w-3 h-3 rounded-full bg-white" />
+          <div className="relative flex items-center justify-center w-8 h-8 shrink-0">
+            <div className="absolute inset-0 rounded-full bg-white/30 animate-ping" />
+            <Radio size={16} className="text-white relative" />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white/90 text-[10px] font-bold tracking-[1.5px] uppercase mb-0.5">🔴 Live Now</p>
@@ -133,7 +140,7 @@ export default function Home() {
       {/* Quick Actions */}
       <div className="flex gap-2.5 mx-4 mt-3">
         <a
-          href={liveStatus?.isLive ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
+          href={liveStatus?.isLive && liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-red-600 font-semibold text-white text-sm"
@@ -189,12 +196,17 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">
                   <p className="text-white font-bold text-sm leading-snug line-clamp-2">{latestVideos[0].title}</p>
-                  <p className="text-white/60 text-xs mt-1">{latestVideos[0].published ? new Date(latestVideos[0].published).toLocaleDateString() : ""}</p>
+                  <p className="text-white/60 text-xs mt-1">{safeDate(latestVideos[0].publishedAt)}</p>
                 </div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <PlayCircle size={22} className="text-white ml-0.5" />
                 </div>
-                {latestVideos[0].duration && (
+                {latestVideos[0].isLive && (
+                  <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-0.5 bg-red-600 rounded text-white text-[10px] font-bold">
+                    <Radio size={8} /> LIVE
+                  </div>
+                )}
+                {latestVideos[0].duration && !latestVideos[0].isLive && (
                   <div className="absolute bottom-3 right-3 px-1.5 py-0.5 bg-black/70 rounded text-white text-xs font-medium">
                     {latestVideos[0].duration}
                   </div>
@@ -215,15 +227,20 @@ export default function Home() {
                 >
                   <div className="relative w-28 aspect-video rounded-xl overflow-hidden shrink-0">
                     <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
-                    {v.duration && (
+                    {v.duration && !v.isLive && (
                       <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 rounded text-white text-[9px] font-medium">
                         {v.duration}
+                      </div>
+                    )}
+                    {v.isLive && (
+                      <div className="absolute top-1 left-1 flex items-center gap-0.5 px-1 py-0.5 bg-red-600 rounded text-white text-[8px] font-bold">
+                        <Radio size={7} /> LIVE
                       </div>
                     )}
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
                     <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
-                    <p className="text-white/40 text-xs mt-1">{v.published ? new Date(v.published).toLocaleDateString() : ""}</p>
+                    <p className="text-white/40 text-xs mt-1">{safeDate(v.publishedAt)}</p>
                   </div>
                 </a>
               ))}

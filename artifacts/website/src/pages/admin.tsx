@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAdmin, type AdminSettings } from "@/context/AdminContext";
 import { usePrayer } from "@/context/PrayerContext";
@@ -7,7 +7,7 @@ import { type MinistryEvent, type MinistryResource } from "@/constants/ministry"
 import { Button } from "@/components/ui/button";
 import {
   Lock, LogOut, Calendar, BookOpen, Heart, Bell, Settings,
-  Plus, Trash2, CheckCircle2, Users, Send, Loader2, X
+  Plus, Trash2, CheckCircle2, Users, Send, Loader2, X, Upload, FileAudio, FileVideo, File,
 } from "lucide-react";
 
 const TABS = [
@@ -20,13 +20,13 @@ const TABS = [
 
 type TabId = typeof TABS[number]["id"];
 
-function timeAgo(dateStr: string) {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function LoginScreen({ onLogin }: { onLogin: (code: string) => boolean }) {
@@ -44,9 +44,8 @@ function LoginScreen({ onLogin }: { onLogin: (code: string) => boolean }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background">
-      <Navbar />
-      <div className="flex-1 flex items-center justify-center px-4 py-24">
+    <AppShell subtitle="Admin">
+      <div className="flex-1 flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-sm flex flex-col gap-6 items-center text-center">
           <div className="w-16 h-16 rounded-2xl bg-primary/20 border border-primary/30 flex items-center justify-center">
             <Lock size={28} className="text-primary" />
@@ -74,8 +73,7 @@ function LoginScreen({ onLogin }: { onLogin: (code: string) => boolean }) {
           </form>
         </div>
       </div>
-      <Footer />
-    </div>
+    </AppShell>
   );
 }
 
@@ -127,9 +125,8 @@ function EventsTab() {
           <input required placeholder="Title" value={form.title || ""} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="input-field" data-testid="event-title" />
           <div className="grid grid-cols-2 gap-3">
             <input required type="date" value={form.date || ""} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} className="input-field" />
-            <input required placeholder="Time (e.g. 10:00 AM)" value={form.time || ""} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} className="input-field" />
+            <input required type="time" value={form.time || ""} onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))} className="input-field" />
           </div>
-          <input placeholder="End Time (optional)" value={form.endTime || ""} onChange={(e) => setForm((f) => ({ ...f, endTime: e.target.value }))} className="input-field" />
           <input required placeholder="Location" value={form.location || ""} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))} className="input-field" />
           <textarea required placeholder="Description" rows={3} value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none" />
           <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as MinistryEvent["category"] }))} className="input-field">
@@ -142,9 +139,8 @@ function EventsTab() {
             Recurring event
           </label>
           {form.isRecurring && (
-            <input placeholder="Pattern (e.g. Every Sunday)" value={form.recurringPattern || ""} onChange={(e) => setForm((f) => ({ ...f, recurringPattern: e.target.value }))} className="input-field" />
+            <input placeholder="Recurring pattern (e.g. Every Sunday)" value={form.recurringPattern || ""} onChange={(e) => setForm((f) => ({ ...f, recurringPattern: e.target.value }))} className="input-field" />
           )}
-          <input placeholder="Registration URL (optional)" value={form.registrationUrl || ""} onChange={(e) => setForm((f) => ({ ...f, registrationUrl: e.target.value }))} className="input-field" />
           <Button type="submit" className="bg-primary text-white hover:bg-primary/90">Add Event</Button>
         </form>
       )}
@@ -154,7 +150,7 @@ function EventsTab() {
           <div key={ev.id} className="flex items-start justify-between gap-3 p-4 rounded-xl bg-card border border-white/10" data-testid={`admin-event-${ev.id}`}>
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-white truncate">{ev.title}</p>
-              <p className="text-sm text-white/50">{ev.date} · {ev.time} · {ev.location}</p>
+              <p className="text-sm text-white/50">{ev.date} · {ev.time} · {ev.location.split(",")[0]}</p>
             </div>
             <button onClick={() => deleteEvent(ev.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors shrink-0" data-testid={`btn-delete-event-${ev.id}`}>
               <Trash2 size={16} />
@@ -162,6 +158,56 @@ function EventsTab() {
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+function FileUploadButton({ onUploaded }: { onUploaded: (url: string, name: string, type: MinistryResource["type"]) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+
+  function detectType(mimeType: string): MinistryResource["type"] {
+    if (mimeType.startsWith("audio/")) return "audio";
+    if (mimeType.startsWith("video/")) return "video";
+    if (mimeType === "application/pdf") return "pdf";
+    return "article";
+  }
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setProgress(`Uploading ${file.name}…`);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      if (!res.ok) throw new Error("Upload failed");
+      const data = await res.json();
+      onUploaded(data.url, file.name, detectType(file.type));
+      setProgress(null);
+    } catch {
+      setProgress("Upload failed — try a URL instead");
+      setTimeout(() => setProgress(null), 3000);
+    }
+    setUploading(false);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  return (
+    <div>
+      <input ref={inputRef} type="file" className="hidden" accept="*/*" onChange={handleFile} />
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        disabled={uploading}
+        className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-white/20 text-white/60 hover:text-white hover:border-primary/50 text-sm transition-colors w-full justify-center"
+      >
+        {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+        {uploading ? "Uploading…" : "Upload file (mp3, video, pdf, any)"}
+      </button>
+      {progress && <p className="text-xs text-white/50 mt-1 text-center">{progress}</p>}
     </div>
   );
 }
@@ -209,10 +255,23 @@ function ResourcesTab() {
               <X size={18} />
             </button>
           </div>
+
           <input required placeholder="Title" value={form.title || ""} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="input-field" />
           <textarea required placeholder="Description" rows={3} value={form.description || ""} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="input-field resize-none" />
           <input placeholder="Author (optional)" value={form.author || ""} onChange={(e) => setForm((f) => ({ ...f, author: e.target.value }))} className="input-field" />
-          <input placeholder="URL (optional)" value={form.url || ""} onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))} className="input-field" />
+
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-white/50 font-medium uppercase tracking-wide">File / Link</p>
+            <FileUploadButton onUploaded={(url, _name, type) => setForm((f) => ({ ...f, url, type }))} />
+            <div className="flex items-center gap-2 text-white/30 text-xs"><div className="flex-1 h-px bg-white/10" />or paste URL<div className="flex-1 h-px bg-white/10" /></div>
+            <input
+              placeholder="https://… or leave blank"
+              value={form.url || ""}
+              onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+              className="input-field"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value as MinistryResource["category"] }))} className="input-field">
               {["bible-study", "devotional", "training", "prayer", "discipleship"].map((c) => (
@@ -225,6 +284,7 @@ function ResourcesTab() {
               ))}
             </select>
           </div>
+
           <label className="flex items-center gap-2 text-sm text-white/70 cursor-pointer">
             <input type="checkbox" checked={!!form.isFree} onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))} className="accent-primary" />
             Free resource
@@ -236,9 +296,14 @@ function ResourcesTab() {
       <div className="flex flex-col gap-3">
         {resources.map((r) => (
           <div key={r.id} className="flex items-start justify-between gap-3 p-4 rounded-xl bg-card border border-white/10" data-testid={`admin-resource-${r.id}`}>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate">{r.title}</p>
-              <p className="text-sm text-white/50">{r.category} · {r.type}{r.isFree ? " · Free" : ""}</p>
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                {r.type === "audio" ? <FileAudio size={15} className="text-primary" /> : r.type === "video" ? <FileVideo size={15} className="text-primary" /> : <File size={15} className="text-primary" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-white truncate">{r.title}</p>
+                <p className="text-xs text-white/50">{r.category} · {r.type}{r.isFree ? " · Free" : ""}</p>
+              </div>
             </div>
             <button onClick={() => deleteResource(r.id)} className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors shrink-0" data-testid={`btn-delete-resource-${r.id}`}>
               <Trash2 size={16} />

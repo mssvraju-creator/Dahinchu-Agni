@@ -8,6 +8,8 @@ const INVIDIOUS_INSTANCES = [
   "https://inv.tux.pizza",
   "https://invidious.nerdvpn.de",
   "https://invidious.io.lol",
+  "https://iv.datura.network",
+  "https://invidious.privacyredirect.com",
 ];
 
 // Try all Invidious instances in parallel; return first JSON response
@@ -15,7 +17,7 @@ async function tryInvidiousParallel(path: string): Promise<any | null> {
   const attempts = INVIDIOUS_INSTANCES.map((instance) =>
     fetch(`${instance}${path}`, {
       headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(4000),
+      signal: AbortSignal.timeout(5000),
     })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .catch(() => null)
@@ -24,23 +26,41 @@ async function tryInvidiousParallel(path: string): Promise<any | null> {
   return results.find((r) => r !== null) ?? null;
 }
 
+function formatDuration(seconds: number): string | null {
+  if (!seconds || seconds <= 0) return null;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) {
+    return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 function mapInvidiousVideo(v: any) {
   const thumbs: any[] = v.videoThumbnails || [];
   let thumb =
     thumbs.find((t) => t.quality === "high")?.url ||
+    thumbs.find((t) => t.quality === "medium")?.url ||
     thumbs[0]?.url ||
     `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`;
   if (thumb.startsWith("//")) thumb = `https:${thumb}`;
+
+  const durationSecs = v.lengthSeconds || 0;
+  const isLive = !!v.liveNow;
+  const isShort = !isLive && durationSecs > 0 && durationSecs <= 65;
+
   return {
     id: v.videoId,
     title: v.title || "",
-    published: new Date((v.published || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    publishedAt: new Date((v.published || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     thumbnailUrl: thumb,
     videoUrl: `https://www.youtube.com/watch?v=${v.videoId}`,
     channelName: v.author || "Dahinchu Agni Ministries",
-    durationSeconds: v.lengthSeconds || 0,
-    isLive: !!v.liveNow,
-    viewCount: v.viewCount || 0,
+    duration: formatDuration(durationSecs),
+    isLive,
+    isShort,
+    viewCount: v.viewCount ? String(v.viewCount) : null,
   };
 }
 
@@ -60,15 +80,21 @@ async function rssToVideos(channelId: string): Promise<any[]> {
       const title = (entry.match(/<title>(.*?)<\/title>/)?.[1] || "")
         .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
         .replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
-      const published = entry.match(/<published>(.*?)<\/published>/)?.[1]?.trim();
+      const publishedRaw = entry.match(/<published>(.*?)<\/published>/)?.[1]?.trim();
       if (!id || !title) return [];
+      // Detect if it looks like a live stream from the title
+      const titleLower = title.toLowerCase();
+      const isLive = titleLower.includes("live") || titleLower.includes("stream") || titleLower.includes("streaming");
       return [{
         id, title,
-        published: published || new Date().toISOString(),
+        publishedAt: publishedRaw || new Date().toISOString(),
         thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
         videoUrl: `https://www.youtube.com/watch?v=${id}`,
         channelName: "Dahinchu Agni Ministries",
-        durationSeconds: 0, isLive: false, viewCount: 0,
+        duration: null,
+        isLive,
+        isShort: false,
+        viewCount: null,
       }];
     });
 }
@@ -94,7 +120,7 @@ router.get("/youtube/feed", async (req: Request, res: Response) => {
   }
 });
 
-// Videos: return as soon as either RSS or Invidious has data (whichever wins)
+// Videos: try RSS first (fast), then Invidious for richer data
 router.get("/youtube/videos", async (req: Request, res: Response) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
@@ -111,25 +137,24 @@ router.get("/youtube/videos", async (req: Request, res: Response) => {
     resolveOnSend();
   }
 
-  // Fallback: respond empty after 6 seconds
-  const fallbackTimer = setTimeout(() => send([], false), 6000);
+  const fallbackTimer = setTimeout(() => send([], false), 8000);
 
-  // RSS (fast ~800ms) — always try for page 1
+  // RSS (fast, page 1 only, ~15 latest videos)
   if (page === 1) {
     rssToVideos(channelId)
-      .then((videos) => { if (videos.length) send(videos, false); })
+      .then((videos) => { if (videos.length) send(videos, true); })
       .catch(() => {});
   }
 
-  // Invidious (may have more videos, slower)
+  // Invidious (richer data: duration, viewCount, isShort, isLive)
   tryInvidiousParallel(
     `/api/v1/channels/${channelId}/videos?page=${page}&sort_by=newest`
   )
     .then((data) => {
       if (data?.videos?.length) {
         const videos = (data.videos as any[]).map(mapInvidiousVideo);
-        // Only override RSS if Invidious has significantly more videos
-        if (!sent || videos.length > 15) send(videos, videos.length >= 25);
+        const hasMore = videos.length >= 25 || data.continuation != null;
+        send(videos, hasMore);
       }
     })
     .catch(() => {});
@@ -138,20 +163,72 @@ router.get("/youtube/videos", async (req: Request, res: Response) => {
   clearTimeout(fallbackTimer);
 });
 
-// Live stream detection
+// Live stream detection — returns { isLive, videoId, title, thumbnailUrl }
 router.get("/youtube/live", async (req: Request, res: Response) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
 
-  const data = await tryInvidiousParallel(`/api/v1/channels/${channelId}/streams`);
+  res.setHeader("Cache-Control", "no-cache, no-store");
 
-  if (data?.videos) {
-    const streams = (data.videos as any[]).filter((v) => v.liveNow).map(mapInvidiousVideo);
-    res.setHeader("Cache-Control", "no-cache");
-    res.json({ streams });
-    return;
+  try {
+    // Strategy 1: Check channel endpoint for liveNow flag
+    const [channelData, videosData] = await Promise.all([
+      tryInvidiousParallel(`/api/v1/channels/${channelId}`),
+      tryInvidiousParallel(`/api/v1/channels/${channelId}/videos?page=1&sort_by=newest`),
+    ]);
+
+    // Check latest videos list for any currently live video
+    if (videosData?.videos) {
+      const liveVideo = (videosData.videos as any[]).find((v: any) => v.liveNow);
+      if (liveVideo) {
+        res.json({
+          isLive: true,
+          videoId: liveVideo.videoId,
+          title: liveVideo.title || null,
+          thumbnailUrl: `https://i.ytimg.com/vi/${liveVideo.videoId}/hqdefault.jpg`,
+        });
+        return;
+      }
+    }
+
+    // Check channel info liveNow flag and streams endpoint
+    if (channelData?.liveNow) {
+      // Try streams endpoint for the live video details
+      const streamsData = await tryInvidiousParallel(`/api/v1/channels/${channelId}/streams`);
+      const liveVideo = streamsData?.videos?.find((v: any) => v.liveNow) || streamsData?.videos?.[0];
+      if (liveVideo) {
+        res.json({
+          isLive: true,
+          videoId: liveVideo.videoId,
+          title: liveVideo.title || null,
+          thumbnailUrl: `https://i.ytimg.com/vi/${liveVideo.videoId}/hqdefault.jpg`,
+        });
+        return;
+      }
+      // liveNow=true but no video details — return live without videoId
+      res.json({ isLive: true, videoId: null, title: "Live Now", thumbnailUrl: null });
+      return;
+    }
+
+    // Strategy 2: Check RSS feed for any live indicators in the latest video
+    try {
+      const rssVideos = await rssToVideos(channelId);
+      if (rssVideos.length > 0 && rssVideos[0].isLive) {
+        res.json({
+          isLive: true,
+          videoId: rssVideos[0].id,
+          title: rssVideos[0].title || null,
+          thumbnailUrl: rssVideos[0].thumbnailUrl,
+        });
+        return;
+      }
+    } catch {
+      // ignore
+    }
+  } catch {
+    // ignore
   }
 
-  res.json({ streams: [] });
+  res.json({ isLive: false, videoId: null, title: null, thumbnailUrl: null });
 });
 
 export default router;

@@ -17,38 +17,8 @@ interface PrayerContextValue {
   deletePrayer: (id: string) => void;
 }
 
-const SEED_PRAYERS: PrayerRequest[] = [
-  {
-    id: "seed-1",
-    name: "Sarah M.",
-    request: "Please pray for my family's health and salvation. My husband has been sick and we need a miracle.",
-    isAnonymous: false,
-    isPublic: true,
-    isPrayed: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "seed-2",
-    name: "Anonymous",
-    request: "Praying for a breakthrough in my finances and for God to open new doors of opportunity.",
-    isAnonymous: true,
-    isPublic: true,
-    isPrayed: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "seed-3",
-    name: "Brother James",
-    request: "Pray for our church plant in the northern region. We need more workers and resources.",
-    isAnonymous: false,
-    isPublic: true,
-    isPrayed: false,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 const PrayerContext = createContext<PrayerContextValue>({
-  prayers: SEED_PRAYERS,
+  prayers: [],
   submitPrayer: () => {},
   markPrayed: () => {},
   deletePrayer: () => {},
@@ -59,10 +29,11 @@ function lsLoad(): PrayerRequest[] {
     const raw = localStorage.getItem("@dahinchu_prayers");
     if (raw) {
       const saved = JSON.parse(raw) as PrayerRequest[];
-      if (saved.length > 0) return saved;
+      // Filter out old seed prayers by their known IDs
+      return saved.filter((p) => !p.id.startsWith("seed-"));
     }
   } catch {}
-  return SEED_PRAYERS;
+  return [];
 }
 
 function lsSave(prayers: PrayerRequest[]) {
