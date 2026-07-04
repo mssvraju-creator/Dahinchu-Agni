@@ -19,23 +19,23 @@ interface MenuItem {
 }
 
 function MenuRow({ item }: { item: MenuItem }) {
-  const iconBg = (item.color ?? "#E84C1E") + "22";
+  const iconBg = (item.color ?? "#E84C1E") + "18";
 
   const inner = (
-    <div className="flex items-center gap-3 px-4 py-3.5 bg-card border-b border-white/5 last:border-0 active:opacity-80 transition-opacity">
+    <div className="flex items-center gap-3 px-4 py-3.5 bg-card border-b border-border last:border-0 active:opacity-70 transition-opacity">
       <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
         {item.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-white text-[15px] font-medium leading-tight">{item.label}</p>
-        {item.sublabel && <p className="text-white/40 text-xs mt-0.5 leading-snug">{item.sublabel}</p>}
+        <p className="text-foreground text-[15px] font-medium leading-tight">{item.label}</p>
+        {item.sublabel && <p className="text-muted-foreground text-xs mt-0.5 leading-snug">{item.sublabel}</p>}
       </div>
       {item.badge && (
         <span className="px-1.5 py-0.5 rounded bg-primary text-white text-[9px] font-bold tracking-wide shrink-0">
           {item.badge}
         </span>
       )}
-      <ChevronRight size={15} className="text-white/30 shrink-0" />
+      <ChevronRight size={15} className="text-muted-foreground/40 shrink-0" />
     </div>
   );
 
@@ -58,8 +58,8 @@ function MenuRow({ item }: { item: MenuItem }) {
 function MenuSection({ title, items }: { title: string; items: MenuItem[] }) {
   return (
     <div className="px-4 mb-5">
-      <p className="text-white/40 text-[10px] font-semibold uppercase tracking-widest mb-2 px-0.5">{title}</p>
-      <div className="rounded-2xl overflow-hidden border border-white/10">
+      <p className="text-muted-foreground text-[10px] font-semibold uppercase tracking-widest mb-2 px-0.5">{title}</p>
+      <div className="rounded-2xl overflow-hidden border border-border">
         {items.map((item, i) => <MenuRow key={i} item={item} />)}
       </div>
     </div>
@@ -184,7 +184,6 @@ export default function More() {
         </div>
       </Link>
 
-      {/* Notice */}
       {adminSettings.noticeText ? (
         <div className="mx-4 mb-4 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
           <p className="text-amber-900 text-xs leading-relaxed">{adminSettings.noticeText}</p>
@@ -195,8 +194,8 @@ export default function More() {
       <MenuSection title="Media & Online" items={mediaItems} />
       <MenuSection title="App" items={appItems} />
 
-      <p className="text-center text-white/20 text-xs pb-6 px-4">
-        Dahinchu Agni Ministries · v1.0.0{"\n"}{MINISTRY.fullName}
+      <p className="text-center text-muted-foreground/40 text-xs pb-6 px-4">
+        Dahinchu Agni Ministries · v1.0.0 · {MINISTRY.fullName}
       </p>
     </AppShell>
   );
