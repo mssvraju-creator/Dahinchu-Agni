@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,10 +39,8 @@ export default function Contact() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background">
-      <Navbar />
-
-      <section className="pt-24 pb-12 border-b border-white/10">
+    <AppShell subtitle="Contact">
+      <section className="pt-8 pb-10 border-b border-white/10">
         <div className="container mx-auto px-4 md:px-6 text-center">
           <h1 className="text-4xl md:text-6xl font-black mb-4 text-white">Get In <span className="fire-gradient-text">Touch</span></h1>
           <p className="text-lg text-white/70 max-w-2xl mx-auto">
@@ -157,7 +154,6 @@ export default function Contact() {
         </div>
       </section>
 
-      <Footer />
-    </div>
+    </AppShell>
   );
 }

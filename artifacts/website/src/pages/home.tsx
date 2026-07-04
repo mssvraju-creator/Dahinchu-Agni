@@ -1,265 +1,294 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
-import { useGetLiveStream, useGetVideos, useGetNotificationStats, getGetLiveStreamQueryKey } from "@workspace/api-client-react";
+import { useState } from "react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Flame, PlayCircle, ArrowRight, Video, Radio, Users, Calendar, Heart, BookOpen } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { BIBLE_VERSES } from "@/constants/ministry";
+import { useGetLiveStream, useGetVideos, getGetLiveStreamQueryKey } from "@workspace/api-client-react";
+import { AppShell } from "@/components/AppShell";
+import { useAdmin } from "@/context/AdminContext";
+import { MINISTRY, BIBLE_VERSES, type MinistryEvent } from "@/constants/ministry";
+import { PlayCircle, Gift, Heart, BookOpen, ExternalLink, Calendar, MapPin, Clock, Tv, Bell } from "lucide-react";
 
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 
+const DAY_TO_NUM: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+  thursday: 4, friday: 5, saturday: 6,
+};
+
+function getNextOccurrenceDate(event: MinistryEvent): string {
+  if (!event.isRecurring) return event.date;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const eventDate = new Date(event.date + "T00:00:00");
+  if (eventDate >= today) return event.date;
+  const pattern = (event.recurringPattern || "").toLowerCase();
+  for (const [dayName, dayNum] of Object.entries(DAY_TO_NUM)) {
+    if (pattern.includes(dayName)) {
+      const diff = (dayNum - today.getDay() + 7) % 7 || 7;
+      const next = new Date(today);
+      next.setDate(today.getDate() + diff);
+      return next.toISOString().split("T")[0];
+    }
+  }
+  let d = new Date(eventDate);
+  while (d < today) d.setDate(d.getDate() + 7);
+  return d.toISOString().split("T")[0];
+}
+
+function formatShortDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-IN", { weekday: "short", month: "short", day: "numeric" });
+}
+
 export default function Home() {
-  const { data: liveStatus, isLoading: isLiveLoading } = useGetLiveStream(
+  const { data: liveStatus } = useGetLiveStream(
     { channelId: CHANNEL_ID },
     { query: { refetchInterval: 60000, queryKey: getGetLiveStreamQueryKey({ channelId: CHANNEL_ID }) } }
   );
+  const { data: videosData, isLoading: videosLoading } = useGetVideos({ channelId: CHANNEL_ID, page: 1 });
+  const { events, adminSettings } = useAdmin();
 
-  const { data: videosData, isLoading: isVideosLoading } = useGetVideos({ channelId: CHANNEL_ID, page: 1 });
-  const { data: statsData } = useGetNotificationStats();
+  const verse = BIBLE_VERSES[new Date().getDate() % BIBLE_VERSES.length];
+  const latestVideos = videosData?.videos.slice(0, 5) ?? [];
 
-  const recentVideos = videosData?.videos.slice(0, 3) || [];
-
-  const dailyVerse = BIBLE_VERSES[Math.floor(Date.now() / 86400000) % BIBLE_VERSES.length];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const upcomingEvents = events
+    .map((e) => ({ ...e, date: getNextOccurrenceDate(e) }))
+    .filter((e) => new Date(e.date + "T00:00:00") >= today)
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .slice(0, 3);
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden">
-      <Navbar />
+    <AppShell>
+      {/* Notice Banner */}
+      {adminSettings.noticeText ? (
+        <div className="mx-4 mt-3 flex items-start gap-2 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200">
+          <Bell size={13} className="text-orange-500 shrink-0 mt-0.5" />
+          <p className="text-amber-900 text-xs leading-relaxed">{adminSettings.noticeText}</p>
+        </div>
+      ) : null}
 
-      {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center justify-center pt-20 pb-32">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background z-10" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-background/50 to-background" />
+      {/* Live Banner */}
+      {liveStatus?.isLive ? (
+        <a
+          href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mx-4 mt-3 flex items-center gap-3 p-3.5 rounded-2xl overflow-hidden relative"
+          style={{ background: "linear-gradient(90deg,#DC2626,#991B1B)" }}
+          data-testid="banner-live-now"
+        >
+          <div className="relative flex items-center justify-center w-7 h-7">
+            <div className="absolute inset-0 rounded-full border-2 border-white/40" />
+            <div className="w-3 h-3 rounded-full bg-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/90 text-[10px] font-bold tracking-[1.5px] uppercase mb-0.5">🔴 Live Now</p>
+            <p className="text-white text-sm font-bold truncate">{liveStatus.title ?? "Live Service"}</p>
+            <p className="text-white/70 text-xs mt-0.5">Tap to watch • Dahinchu Agni</p>
+          </div>
+          <div className="flex items-center gap-1 bg-white rounded-lg px-2.5 py-1.5 shrink-0">
+            <PlayCircle size={12} className="text-red-600" />
+            <span className="text-red-600 text-xs font-bold">Watch</span>
+          </div>
+        </a>
+      ) : (
+        <a
+          href={`${MINISTRY.youtubeChannelUrl}/live`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mx-4 mt-3 flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-white/10"
+        >
+          <div className="w-2 h-2 rounded-full bg-white/30 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-semibold">No Live Stream Right Now</p>
+            <p className="text-white/50 text-xs mt-0.5">Tap to check our YouTube channel</p>
+          </div>
+          <ExternalLink size={15} className="text-white/30 shrink-0" />
+        </a>
+      )}
+
+      {/* Bible Verse Card */}
+      <div
+        className="mx-4 mt-3 rounded-2xl px-5 py-4 border border-amber-200"
+        style={{ background: "linear-gradient(135deg,#FFF7ED,#FFECD2,#FFF7ED)" }}
+        data-testid="verse-card"
+      >
+        <BookOpen size={15} className="text-orange-500 mb-2" />
+        <p className="text-amber-900 text-[14px] leading-[22px] italic mb-2.5">"{verse.text}"</p>
+        <p className="text-primary text-xs font-semibold">{verse.ref}</p>
+      </div>
+
+      {/* Stats Row */}
+      <div className="flex gap-2 mx-4 mt-3">
+        {MINISTRY.stats.map((s) => (
+          <div
+            key={s.label}
+            className="flex-1 flex flex-col items-center gap-0.5 py-3 rounded-2xl bg-card border border-white/10"
+          >
+            <span className="text-primary text-lg font-black">{s.number}</span>
+            <span className="text-white/50 text-[9px] uppercase tracking-wide text-center leading-tight">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex gap-2.5 mx-4 mt-3">
+        <a
+          href={liveStatus?.isLive ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-red-600 font-semibold text-white text-sm"
+          data-testid="btn-watch-live"
+        >
+          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+          Watch Live
+        </a>
+        <Link href="/give" className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-semibold text-white text-sm" style={{ backgroundColor: "#C8860A" }} data-testid="btn-give">
+          <Gift size={14} className="text-white" />
+          Give
+        </Link>
+        <Link href="/prayer" className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-semibold text-white text-sm" style={{ backgroundColor: "#7C3AED" }} data-testid="btn-prayer">
+          <Heart size={14} className="text-white" />
+          Prayer
+        </Link>
+      </div>
+
+      {/* Latest Messages */}
+      <div className="mx-4 mt-5">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-white text-xl font-black">Latest Messages</h2>
+          <Link href="/media" className="text-primary text-sm font-medium">See all</Link>
         </div>
 
-        <div className="container mx-auto px-4 relative z-20 flex flex-col items-center text-center">
-          {isLiveLoading ? (
-            <Skeleton className="h-8 w-48 mb-8 rounded-full bg-white/10" />
-          ) : liveStatus?.isLive ? (
-            <a 
-              href={`https://www.youtube.com/watch?v=${liveStatus.videoId}`}
+        {videosLoading ? (
+          <div className="rounded-2xl bg-card border border-white/10 p-5 flex items-center justify-center">
+            <div className="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            <span className="text-white/50 text-sm ml-3">Loading messages…</span>
+          </div>
+        ) : latestVideos.length === 0 ? (
+          <div className="rounded-2xl bg-card border border-white/10 border-dashed p-6 flex flex-col items-center gap-2">
+            <PlayCircle size={28} className="text-white/30" />
+            <p className="text-white text-sm font-semibold">No videos loaded</p>
+            <a href={MINISTRY.youtubeChannelUrl} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-1.5 mt-1 px-4 py-2 rounded-xl bg-red-600 text-white text-xs font-semibold">
+              <ExternalLink size={12} />
+              Open YouTube Channel
+            </a>
+          </div>
+        ) : (
+          <>
+            {/* Featured video */}
+            <a
+              href={`https://www.youtube.com/watch?v=${latestVideos[0].id}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-red-500/20 text-red-500 border border-red-500/50 mb-8 animate-pulse"
-              data-testid="banner-live-now"
+              className="block rounded-2xl overflow-hidden bg-card border border-white/10 mb-2.5 group"
+              data-testid={`video-featured-${latestVideos[0].id}`}
             >
-              <Radio size={18} />
-              <span className="font-bold text-sm tracking-widest uppercase">Live Now</span>
-              {liveStatus.title && <span className="text-white/80 hidden md:inline ml-2 truncate max-w-xs">- {liveStatus.title}</span>}
-            </a>
-          ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 text-white/70">
-              <Flame size={18} className="text-primary" />
-              <span className="font-medium text-sm tracking-widest uppercase">Spirit-Filled Ministry</span>
-            </div>
-          )}
-
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tighter leading-none mb-6">
-            <span className="block text-white">CONSUMING FIRE</span>
-            <span className="block fire-gradient-text">IGNITING NATIONS</span>
-          </h1>
-
-          <p className="text-lg md:text-xl text-white/70 max-w-2xl mb-12 font-medium">
-            Welcome to Dahinchu Agni Ministries. A global movement of passionate worship, prophetic preaching, and radical encounter with the Holy Spirit.
-          </p>
-
-          <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-            <Link href="/media">
-              <Button size="lg" className="w-full sm:w-auto text-lg h-14 px-8 bg-primary text-white hover:bg-primary/90 fire-glow" data-testid="btn-hero-watch">
-                <PlayCircle className="mr-2 h-5 w-5" />
-                Watch Latest Sermons
-              </Button>
-            </Link>
-            <Link href="/about">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-lg h-14 px-8 border-white/20 hover:bg-white/10" data-testid="btn-hero-about">
-                Our Story
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Daily Verse */}
-      <section className="py-10 border-b border-white/10 bg-secondary/10">
-        <div className="container mx-auto px-4 md:px-6 max-w-3xl text-center">
-          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Verse of the Day</p>
-          <blockquote className="text-lg md:text-xl text-white/85 font-medium italic leading-relaxed mb-3">
-            "{dailyVerse.text}"
-          </blockquote>
-          <p className="text-primary font-bold">— {dailyVerse.ref}</p>
-        </div>
-      </section>
-
-      {/* Quick Links */}
-      <section className="py-14 border-b border-white/10">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              { href: "/events", icon: Calendar, label: "Events", desc: "Services & gatherings" },
-              { href: "/prayer", icon: Heart, label: "Prayer Wall", desc: "Submit a prayer request" },
-              { href: "/resources", icon: BookOpen, label: "Resources", desc: "Free study materials" },
-              { href: "/give", icon: Flame, label: "Give", desc: "Partner with this ministry" },
-            ].map(({ href, icon: Icon, label, desc }) => (
-              <Link key={href} href={href}>
-                <div className="group flex flex-col items-center gap-2 p-5 rounded-2xl bg-card border border-white/10 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer text-center h-full" data-testid={`quick-link-${label.toLowerCase().replace(" ", "-")}`}>
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-1 group-hover:bg-primary/30 transition-colors">
-                    <Icon size={22} className="text-primary" />
-                  </div>
-                  <p className="font-bold text-white text-sm group-hover:text-primary transition-colors">{label}</p>
-                  <p className="text-xs text-white/50">{desc}</p>
+              <div className="relative aspect-video">
+                <img src={latestVideos[0].thumbnailUrl} alt={latestVideos[0].title} className="w-full h-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute bottom-3 left-3 right-3">
+                  <p className="text-white font-bold text-sm leading-snug line-clamp-2">{latestVideos[0].title}</p>
+                  <p className="text-white/60 text-xs mt-1">{new Date(latestVideos[0].publishedAt).toLocaleDateString()}</p>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Mission / About Snippet */}
-      <section className="py-24 bg-secondary/10 relative">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h2 className="text-3xl md:text-5xl font-bold mb-6 text-white">More Than a Church.<br/>A <span className="fire-gradient-text">Movement.</span></h2>
-              <p className="text-white/70 text-lg mb-6 leading-relaxed">
-                Dahinchu Agni means "Consuming Fire." We believe in the undeniable power of God to transform lives, heal the sick, and ignite hearts with a passion for His presence.
-              </p>
-              <ul className="space-y-4 mb-8">
-                <li className="flex items-center gap-3 text-white/80">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                    <Flame size={18} />
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <PlayCircle size={22} className="text-white ml-0.5" />
+                </div>
+                {latestVideos[0].duration && (
+                  <div className="absolute bottom-3 right-3 px-1.5 py-0.5 bg-black/70 rounded text-white text-xs font-medium">
+                    {latestVideos[0].duration}
                   </div>
-                  Passionate Worship
-                </li>
-                <li className="flex items-center gap-3 text-white/80">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                    <Video size={18} />
-                  </div>
-                  Global Live Streams
-                </li>
-                <li className="flex items-center gap-3 text-white/80">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                    <Users size={18} />
-                  </div>
-                  Community of Believers
-                </li>
-              </ul>
-              <Link href="/about">
-                <Button variant="link" className="text-primary hover:text-primary/80 p-0 h-auto font-bold text-lg group" data-testid="btn-read-more">
-                  Read Our Vision <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-                </Button>
-              </Link>
-            </div>
-            <div className="relative">
-              <div className="aspect-square rounded-2xl overflow-hidden bg-white/5 border border-white/10 flex items-center justify-center relative">
-                <div className="absolute inset-0 bg-gradient-to-tr from-primary/20 to-transparent mix-blend-overlay" />
-                <img src="/da-logo.png" alt="Ministry Logo" className="w-1/2 opacity-50" />
+                )}
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
+            </a>
 
-      {/* Latest Sermons */}
-      <section className="py-24">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex items-end justify-between mb-12">
-            <div>
-              <h2 className="text-3xl md:text-5xl font-bold text-white mb-4">Latest <span className="fire-gradient-text">Messages</span></h2>
-              <p className="text-white/60 text-lg">Catch up on recent teachings and powerful moments.</p>
-            </div>
-            <Link href="/media" className="hidden md:flex">
-              <Button variant="outline" className="border-white/20 hover:bg-white/10" data-testid="btn-view-all-sermons">
-                View All Sermons
-              </Button>
-            </Link>
-          </div>
-
-          {isVideosLoading ? (
-            <div className="grid md:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="aspect-video w-full rounded-xl bg-white/5" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid md:grid-cols-3 gap-6">
-              {recentVideos.map((video) => (
-                <a 
-                  key={video.id}
-                  href={`https://www.youtube.com/watch?v=${video.id}`}
+            {/* Compact video cards */}
+            <div className="flex flex-col gap-2">
+              {latestVideos.slice(1, 4).map((v) => (
+                <a
+                  key={v.id}
+                  href={`https://www.youtube.com/watch?v=${v.id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group block relative rounded-xl overflow-hidden bg-card border border-white/10 transition-all hover:border-primary/50 hover:shadow-[0_0_20px_rgba(232,76,30,0.15)]"
-                  data-testid={`video-card-${video.id}`}
+                  className="flex gap-3 p-2.5 rounded-2xl bg-card border border-white/10 group items-center"
+                  data-testid={`video-card-${v.id}`}
                 >
-                  <div className="aspect-video relative">
-                    <img src={video.thumbnailUrl} alt={video.title} className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                      <div className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                        <PlayCircle size={24} className="ml-1" />
-                      </div>
-                    </div>
-                    {video.duration && (
-                      <div className="absolute bottom-2 right-2 px-2 py-1 bg-black/80 text-white text-xs rounded font-medium">
-                        {video.duration}
+                  <div className="relative w-28 aspect-video rounded-xl overflow-hidden shrink-0">
+                    <img src={v.thumbnailUrl} alt={v.title} className="w-full h-full object-cover" />
+                    {v.duration && (
+                      <div className="absolute bottom-1 right-1 px-1 py-0.5 bg-black/80 rounded text-white text-[9px] font-medium">
+                        {v.duration}
                       </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <h3 className="font-bold text-white line-clamp-2 mb-2 group-hover:text-primary transition-colors">{video.title}</h3>
-                    <div className="flex items-center text-sm text-white/50">
-                      <span>{new Date(video.publishedAt).toLocaleDateString()}</span>
-                      {video.viewCount && (
-                        <>
-                          <span className="mx-2">•</span>
-                          <span>{Number(video.viewCount).toLocaleString()} views</span>
-                        </>
-                      )}
-                    </div>
+                  <div className="flex-1 min-w-0 py-0.5">
+                    <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
+                    <p className="text-white/40 text-xs mt-1">{new Date(v.publishedAt).toLocaleDateString()}</p>
                   </div>
                 </a>
               ))}
             </div>
-          )}
-          
-          <div className="mt-8 text-center md:hidden">
-            <Link href="/media">
-              <Button variant="outline" className="w-full border-white/20" data-testid="btn-view-all-sermons-mobile">
-                View All Sermons
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+          </>
+        )}
+      </div>
 
-      {/* CTA Section */}
-      <section className="py-24 relative overflow-hidden">
-        <div className="absolute inset-0 bg-primary/10" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent" />
-        
-        <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
-          <Flame size={48} className="text-primary mx-auto mb-6" />
-          <h2 className="text-4xl md:text-6xl font-black text-white mb-6">Partner With The Vision</h2>
-          <p className="text-xl text-white/80 max-w-2xl mx-auto mb-10">
-            Your generosity fuels this ministry and helps us take the fire of God to the nations. 
-            {statsData && ` Join ${statsData.subscribers.toLocaleString()} others in our community.`}
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/give">
-              <Button size="lg" className="h-14 px-8 text-lg bg-primary text-white hover:bg-primary/90 fire-glow" data-testid="btn-cta-give">
-                Give Online
-              </Button>
-            </Link>
-            <a href="https://www.youtube.com/@Dahinchuagni?sub_confirmation=1" target="_blank" rel="noopener noreferrer">
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg border-white/20 hover:bg-white/10" data-testid="btn-cta-subscribe">
-                Subscribe on YouTube
-              </Button>
-            </a>
-          </div>
+      {/* Upcoming Events */}
+      <div className="mx-4 mt-6">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-white text-xl font-black">Upcoming Events</h2>
+          <Link href="/events" className="text-primary text-sm font-medium">See all</Link>
         </div>
-      </section>
 
-      <Footer />
-    </div>
+        {upcomingEvents.length === 0 ? (
+          <div className="rounded-2xl bg-card border border-white/10 border-dashed p-6 flex flex-col items-center gap-2">
+            <Calendar size={28} className="text-white/30" />
+            <p className="text-white text-sm font-semibold">No upcoming events</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {upcomingEvents.map((e) => (
+              <Link
+                key={e.id}
+                href="/events"
+                className="flex gap-3 p-3.5 rounded-2xl bg-card border border-white/10 items-start"
+                data-testid={`event-card-home-${e.id}`}
+              >
+                <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                  <Calendar size={18} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white text-sm font-semibold leading-snug line-clamp-1">{e.title}</p>
+                  <div className="flex items-center gap-3 mt-1 text-white/50 text-xs">
+                    <span className="flex items-center gap-1"><Clock size={10} />{formatShortDate(e.date)}</span>
+                    <span className="flex items-center gap-1"><MapPin size={10} />{e.location.split(",")[0]}</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Calvary TV Banner */}
+      <div className="mx-4 mt-4 mb-4">
+        <a
+          href={MINISTRY.youtubeChannelUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-3 p-4 rounded-2xl"
+          style={{ background: "linear-gradient(90deg,#1C1C1C,#2D1515)" }}
+          data-testid="calvary-tv-banner"
+        >
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={{ backgroundColor: "#E84C1E22" }}>
+            <Tv size={20} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-sm font-bold">Calvary TV Ministry</p>
+            <p className="text-white/60 text-xs mt-0.5">Watch Sunday services, Pastor's meetings & live programs</p>
+          </div>
+          <ExternalLink size={16} className="text-primary shrink-0" />
+        </a>
+      </div>
+    </AppShell>
   );
 }

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { useAdmin, type AdminSettings } from "@/context/AdminContext";
 import { usePrayer } from "@/context/PrayerContext";
 import { useGetNotificationStats } from "@workspace/api-client-react";
@@ -481,10 +480,8 @@ export default function Admin() {
   }[activeTab];
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background">
-      <Navbar />
-
-      <section className="pt-24 pb-8 bg-secondary/20 border-b border-white/10">
+    <AppShell subtitle="Admin Panel">
+      <section className="pt-6 pb-8 bg-secondary/20 border-b border-white/10">
         <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
           <div>
             <h1 className="text-3xl md:text-4xl font-black text-white">Admin Panel</h1>
@@ -522,8 +519,6 @@ export default function Admin() {
           {TabContent}
         </div>
       </section>
-
-      <Footer />
-    </div>
+    </AppShell>
   );
 }

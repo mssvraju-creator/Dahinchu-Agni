@@ -8,12 +8,13 @@ import NotFound from "@/pages/not-found";
 
 import Home from "@/pages/home";
 import Media from "@/pages/media";
+import Events from "@/pages/events";
+import Prayer from "@/pages/prayer";
+import More from "@/pages/more";
+import Resources from "@/pages/resources";
 import About from "@/pages/about";
 import Give from "@/pages/give";
 import Contact from "@/pages/contact";
-import Events from "@/pages/events";
-import Prayer from "@/pages/prayer";
-import Resources from "@/pages/resources";
 import Admin from "@/pages/admin";
 
 const queryClient = new QueryClient({
@@ -32,6 +33,7 @@ function Router() {
       <Route path="/media" component={Media} />
       <Route path="/events" component={Events} />
       <Route path="/prayer" component={Prayer} />
+      <Route path="/more" component={More} />
       <Route path="/resources" component={Resources} />
       <Route path="/about" component={About} />
       <Route path="/give" component={Give} />

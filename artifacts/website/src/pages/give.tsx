@@ -1,5 +1,4 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Copy, HeartHandshake, CheckCircle2 } from "lucide-react";
@@ -36,10 +35,8 @@ export default function Give() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background">
-      <Navbar />
-
-      <section className="pt-24 pb-12 border-b border-white/10 relative overflow-hidden">
+    <AppShell subtitle="Give">
+      <section className="pt-8 pb-10 border-b border-white/10 relative overflow-hidden">
         <div className="absolute inset-0 bg-primary/5" />
         <div className="container mx-auto px-4 md:px-6 relative z-10 text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-primary/20 flex items-center justify-center text-primary mb-6">
@@ -127,7 +124,6 @@ export default function Give() {
         </div>
       </section>
 
-      <Footer />
-    </div>
+    </AppShell>
   );
 }

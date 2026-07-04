@@ -1,13 +1,10 @@
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { AppShell } from "@/components/AppShell";
 import { Flame, Globe, Heart } from "lucide-react";
 
 export default function About() {
   return (
-    <div className="min-h-screen flex flex-col w-full bg-background">
-      <Navbar />
-
-      <section className="pt-24 pb-16 bg-secondary/10 border-b border-white/10 relative overflow-hidden">
+    <AppShell subtitle="About">
+      <section className="pt-8 pb-10 bg-secondary/10 border-b border-white/10 relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-full bg-primary/10 blur-[120px] rounded-full pointer-events-none" />
         <div className="container mx-auto px-4 md:px-6 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
@@ -80,7 +77,6 @@ export default function About() {
         </div>
       </section>
 
-      <Footer />
-    </div>
+    </AppShell>
   );
 }
