@@ -47,7 +47,7 @@ function safeDate(iso?: string | null): string {
 export default function Home() {
   const { data: liveStatus } = useGetLiveStream(
     { channelId: CHANNEL_ID },
-    { query: { refetchInterval: 60000, queryKey: getGetLiveStreamQueryKey({ channelId: CHANNEL_ID }) } }
+    { query: { refetchInterval: 30_000, staleTime: 0, queryKey: getGetLiveStreamQueryKey({ channelId: CHANNEL_ID }) } }
   );
   const { data: videosData, isLoading: videosLoading } = useGetVideos({ channelId: CHANNEL_ID, page: 1 });
   const { events, adminSettings } = useAdmin();

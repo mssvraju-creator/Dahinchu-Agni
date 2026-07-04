@@ -328,7 +328,7 @@ function NotificationsTab() {
   async function sendLive() {
     setSending("live");
     try {
-      const res = await fetch("/api/notifications/send-live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: "DAFIRE94", title: liveTitle || undefined }) });
+      const res = await fetch("/api/notifications/send-live", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ passcode: "DAFIRE94", streamTitle: liveTitle || undefined }) });
       if (res.ok) { setSent("Live alert sent!"); setLiveTitle(""); } else setSent("Failed to send");
     } catch { setSent("Failed to send"); }
     setSending(null);
@@ -354,7 +354,7 @@ function NotificationsTab() {
         </div>
         <div>
           <p className="text-muted-foreground text-sm">Push Subscribers</p>
-          <p className="text-2xl font-black text-foreground">{isLoading ? "—" : (statsData?.count ?? 0)}</p>
+          <p className="text-2xl font-black text-foreground">{isLoading ? "—" : (statsData?.subscribers ?? 0)}</p>
         </div>
       </div>
 
