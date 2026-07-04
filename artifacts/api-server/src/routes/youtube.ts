@@ -142,6 +142,13 @@ async function fetchRss(channelId: string): Promise<any[]> {
   });
 }
 
+// Known YouTube UI strings to skip when extracting video title
+const YT_UI_STRINGS = new Set([
+  "SUBSCRIBE", "SUBSCRIBED", "UNSUBSCRIBE", "Unsubscribe", "Subscribe",
+  "Cancel", "Report", "Share", "Save", "Download", "Clip", "Thanks",
+  "Add to queue", "Like", "Dislike",
+]);
+
 // Scrape YouTube channel/live page for live indicator
 async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; videoId: string | null; title: string | null } | null> {
   try {
@@ -150,20 +157,40 @@ async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; video
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
       },
-      signal: AbortSignal.timeout(8000),
+      signal: AbortSignal.timeout(9000),
       redirect: "follow",
     });
     if (!r.ok) return null;
     const html = await r.text();
+
+    // " watching now" is the most reliable live-only indicator on this page
+    // "isLiveContent":true is set on the video renderer when the stream is active
+    // Note: "liveStreamAbilityRenderer" is always present for live-capable channels — don't use it
     const hasLive =
+      html.includes(' watching now"') ||
       html.includes('"isLiveContent":true') ||
-      html.includes('"liveStreamAbilityRenderer"') ||
       html.includes('"isLive":true');
     if (!hasLive) return { isLive: false, videoId: null, title: null };
+
+    // Extract video ID
     const videoIdMatch = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
     const videoId = videoIdMatch?.[1] ?? null;
-    const titleMatch = html.match(/"text":"([^"]{5,200})"/);
-    const title = titleMatch?.[1] ?? null;
+
+    // Extract title: collect ALL "text":"..." values, filter UI noise, pick longest
+    const allTextMatches = [...html.matchAll(/"text":"([^"]{8,300})"/g)].map((m) => m[1]);
+    const title =
+      allTextMatches
+        .filter(
+          (t) =>
+            !YT_UI_STRINGS.has(t) &&
+            !t.includes(" watching now") &&
+            !/playlist/i.test(t) &&
+            !/sign in/i.test(t) &&
+            !/again later/i.test(t) &&
+            !/unsubscribe from/i.test(t)
+        )
+        .sort((a, b) => b.length - a.length)[0] ?? null;
+
     return { isLive: true, videoId, title };
   } catch {
     return null;

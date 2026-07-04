@@ -233,16 +233,49 @@ export default function Media() {
     refetchVideos();
   }, [refetchLive, refetchVideos]);
 
-  // Deduplicate and sort: live first, then by date
+  // Deduplicate, inject live status from liveStatus.videoId, sort live-first
   const sortedVideos = useMemo(() => {
     const seen = new Set<string>();
-    const unique = allVideos.filter((v) => { if (seen.has(v.id)) return false; seen.add(v.id); return true; });
+    let items = [...allVideos];
+
+    // If the API knows which video is live, inject it at the top even if
+    // the video feed didn't tag it (e.g. no "live" keyword in the title)
+    if (liveStatus?.isLive && liveStatus?.videoId) {
+      const liveId = liveStatus.videoId;
+      const alreadyPresent = items.some((v) => v.id === liveId);
+      if (!alreadyPresent) {
+        // Add a synthetic card so the live stream is always visible
+        items.unshift({
+          id: liveId,
+          title: liveStatus.title || "Live Stream",
+          publishedAt: new Date().toISOString(),
+          thumbnailUrl:
+            liveStatus.thumbnailUrl ||
+            `https://i.ytimg.com/vi/${liveId}/hqdefault.jpg`,
+          duration: null,
+          isLive: true,
+          isShort: false,
+          viewCount: null,
+        });
+      }
+      // Always force-mark the matching video as live
+      items = items.map((v) =>
+        v.id === liveId ? { ...v, isLive: true } : v
+      );
+    }
+
+    const unique = items.filter((v) => {
+      if (seen.has(v.id)) return false;
+      seen.add(v.id);
+      return true;
+    });
+
     return unique.sort((a, b) => {
       if (a.isLive && !b.isLive) return -1;
       if (!a.isLive && b.isLive) return 1;
       return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
     });
-  }, [allVideos]);
+  }, [allVideos, liveStatus]);
 
   const filtered = useMemo(() => filterByCategory(sortedVideos, activeCategory), [sortedVideos, activeCategory]);
 
