@@ -147,3 +147,20 @@
 .fire-glow:hover {
   box-shadow: 0 0 30px rgba(232, 76, 30, 0.5);
 }
+
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.input-field {
+  @apply w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-white/30 focus:outline-none focus:border-primary/50 transition-colors text-sm;
+}
+
+.input-field option {
+  @apply bg-background text-white;
+}

@@ -10,8 +10,10 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/media", label: "Sermons" },
+    { href: "/events", label: "Events" },
+    { href: "/prayer", label: "Prayer" },
+    { href: "/resources", label: "Resources" },
     { href: "/about", label: "About" },
-    { href: "/give", label: "Give" },
     { href: "/contact", label: "Contact" },
   ];
 
@@ -27,10 +29,10 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-8">
+          <nav className="hidden lg:flex items-center gap-6">
             {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
+              <Link
+                key={link.href}
                 href={link.href}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   location === link.href ? "text-primary" : "text-white/70"
@@ -48,8 +50,8 @@ export function Navbar() {
           </nav>
 
           {/* Mobile Menu Toggle */}
-          <button 
-            className="md:hidden p-2 text-white/70 hover:text-white"
+          <button
+            className="lg:hidden p-2 text-white/70 hover:text-white"
             onClick={() => setIsOpen(!isOpen)}
             data-testid="btn-mobile-menu"
           >
@@ -60,11 +62,11 @@ export function Navbar() {
 
       {/* Mobile Nav */}
       {isOpen && (
-        <div className="md:hidden border-t border-white/10 bg-background px-4 py-6">
+        <div className="lg:hidden border-t border-white/10 bg-background px-4 py-6">
           <nav className="flex flex-col gap-4">
             {navLinks.map((link) => (
-              <Link 
-                key={link.href} 
+              <Link
+                key={link.href}
                 href={link.href}
                 className={`text-lg font-medium transition-colors ${
                   location === link.href ? "text-primary" : "text-white/70"

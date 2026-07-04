@@ -3,8 +3,9 @@ import { Footer } from "@/components/Footer";
 import { useGetLiveStream, useGetVideos, useGetNotificationStats, getGetLiveStreamQueryKey } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Flame, PlayCircle, ArrowRight, Video, Radio, Users } from "lucide-react";
+import { Flame, PlayCircle, ArrowRight, Video, Radio, Users, Calendar, Heart, BookOpen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BIBLE_VERSES } from "@/constants/ministry";
 
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 
@@ -18,6 +19,8 @@ export default function Home() {
   const { data: statsData } = useGetNotificationStats();
 
   const recentVideos = videosData?.videos.slice(0, 3) || [];
+
+  const dailyVerse = BIBLE_VERSES[Math.floor(Date.now() / 86400000) % BIBLE_VERSES.length];
 
   return (
     <div className="min-h-screen flex flex-col w-full bg-background overflow-x-hidden">
@@ -73,6 +76,41 @@ export default function Home() {
                 Our Story
               </Button>
             </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Daily Verse */}
+      <section className="py-10 border-b border-white/10 bg-secondary/10">
+        <div className="container mx-auto px-4 md:px-6 max-w-3xl text-center">
+          <p className="text-xs font-bold uppercase tracking-widest text-primary mb-3">Verse of the Day</p>
+          <blockquote className="text-lg md:text-xl text-white/85 font-medium italic leading-relaxed mb-3">
+            "{dailyVerse.text}"
+          </blockquote>
+          <p className="text-primary font-bold">— {dailyVerse.ref}</p>
+        </div>
+      </section>
+
+      {/* Quick Links */}
+      <section className="py-14 border-b border-white/10">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { href: "/events", icon: Calendar, label: "Events", desc: "Services & gatherings" },
+              { href: "/prayer", icon: Heart, label: "Prayer Wall", desc: "Submit a prayer request" },
+              { href: "/resources", icon: BookOpen, label: "Resources", desc: "Free study materials" },
+              { href: "/give", icon: Flame, label: "Give", desc: "Partner with this ministry" },
+            ].map(({ href, icon: Icon, label, desc }) => (
+              <Link key={href} href={href}>
+                <div className="group flex flex-col items-center gap-2 p-5 rounded-2xl bg-card border border-white/10 hover:border-primary/40 hover:bg-primary/5 transition-all cursor-pointer text-center h-full" data-testid={`quick-link-${label.toLowerCase().replace(" ", "-")}`}>
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-1 group-hover:bg-primary/30 transition-colors">
+                    <Icon size={22} className="text-primary" />
+                  </div>
+                  <p className="font-bold text-white text-sm group-hover:text-primary transition-colors">{label}</p>
+                  <p className="text-xs text-white/50">{desc}</p>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
