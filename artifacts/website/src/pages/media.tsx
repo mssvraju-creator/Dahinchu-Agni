@@ -162,7 +162,7 @@ export default function Media() {
                   <div className="absolute bottom-3 left-3 right-3">
                     <p className="text-white font-bold text-sm leading-snug line-clamp-2">{filtered[0].title}</p>
                     <div className="flex items-center gap-3 mt-1 text-white/60 text-xs">
-                      <span>{new Date(filtered[0].publishedAt).toLocaleDateString()}</span>
+                      <span>{filtered[0].published ? new Date(filtered[0].published).toLocaleDateString() : ""}</span>
                       {filtered[0].viewCount && <span>{Number(filtered[0].viewCount).toLocaleString()} views</span>}
                     </div>
                   </div>
@@ -202,7 +202,7 @@ export default function Media() {
                 <div className="flex-1 min-w-0 py-0.5">
                   <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
                   <div className="flex items-center gap-2 mt-1 text-white/40 text-xs">
-                    <span>{new Date(v.publishedAt).toLocaleDateString()}</span>
+                    <span>{v.published ? new Date(v.published).toLocaleDateString() : ""}</span>
                     {v.viewCount && <span>· {Number(v.viewCount).toLocaleString()} views</span>}
                   </div>
                 </div>

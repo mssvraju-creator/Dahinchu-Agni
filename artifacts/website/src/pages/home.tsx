@@ -189,7 +189,7 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                 <div className="absolute bottom-3 left-3 right-3">
                   <p className="text-white font-bold text-sm leading-snug line-clamp-2">{latestVideos[0].title}</p>
-                  <p className="text-white/60 text-xs mt-1">{new Date(latestVideos[0].publishedAt).toLocaleDateString()}</p>
+                  <p className="text-white/60 text-xs mt-1">{latestVideos[0].published ? new Date(latestVideos[0].published).toLocaleDateString() : ""}</p>
                 </div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <PlayCircle size={22} className="text-white ml-0.5" />
@@ -223,7 +223,7 @@ export default function Home() {
                   </div>
                   <div className="flex-1 min-w-0 py-0.5">
                     <p className="text-white text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">{v.title}</p>
-                    <p className="text-white/40 text-xs mt-1">{new Date(v.publishedAt).toLocaleDateString()}</p>
+                    <p className="text-white/40 text-xs mt-1">{v.published ? new Date(v.published).toLocaleDateString() : ""}</p>
                   </div>
                 </a>
               ))}
