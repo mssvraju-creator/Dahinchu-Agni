@@ -355,8 +355,24 @@ export default function Media() {
     [sortedVideos]
   );
 
-  // Live videos
+  // Live videos from the feed (Piped marks duration === -1 / isLive flag)
+  // Secondary live signal — catches live streams even when the /live poll fails
   const liveVideos = useMemo(() => sortedVideos.filter((v) => v.isLive), [sortedVideos]);
+
+  // Effective live: dedicated poll wins; fall back to the live video in the feed
+  const effectiveLive = useMemo(() => {
+    if (liveStatus?.isLive && liveStatus.videoId) return liveStatus;
+    const fromList = liveVideos[0];
+    if (fromList) {
+      return {
+        isLive: true as const,
+        videoId: fromList.id,
+        title: fromList.title,
+        thumbnailUrl: fromList.thumbnailUrl ?? null,
+      };
+    }
+    return { isLive: false as const, videoId: null, title: null, thumbnailUrl: null };
+  }, [liveStatus, liveVideos]);
 
   const hasMore = data?.hasMore ?? false;
   const videoCount = filtered.length;
@@ -364,44 +380,60 @@ export default function Media() {
   return (
     <AppShell subtitle="Media">
       {/* ── Live Hero ── */}
-      {liveStatus?.isLive ? (
+      {effectiveLive.isLive ? (
         <div className="mx-4 mt-3">
           <a
-            href={liveStatus.videoId
-              ? `https://www.youtube.com/watch?v=${liveStatus.videoId}`
+            href={effectiveLive.videoId
+              ? `https://www.youtube.com/watch?v=${effectiveLive.videoId}`
               : `${MINISTRY.youtubeChannelUrl}/live`}
             target="_blank"
             rel="noopener noreferrer"
-            className="block rounded-2xl overflow-hidden relative group"
-            style={{ background: "linear-gradient(135deg,#DC2626,#7F1D1D)" }}
+            className="block rounded-2xl overflow-hidden relative group aspect-video"
+            style={{ background: "#7F1D1D" }}
             data-testid="media-live-hero"
           >
-            {liveStatus.thumbnailUrl && (
-              <img
-                src={liveStatus.thumbnailUrl}
-                alt="Live"
-                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-40 transition-opacity"
-              />
-            )}
-            <div className="relative p-5 flex flex-col gap-3">
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-600 border border-white/20">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                  <span className="text-white text-[10px] font-bold tracking-widest">LIVE NOW</span>
-                </div>
-                <span className="text-white/60 text-xs">Dahinchu Agni Ministries</span>
+            {/* Full thumbnail as background */}
+            <img
+              src={effectiveLive.thumbnailUrl
+                ?? (effectiveLive.videoId ? `https://i.ytimg.com/vi/${effectiveLive.videoId}/hqdefault.jpg` : undefined)}
+              alt="Live stream thumbnail"
+              className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-80 transition-opacity"
+            />
+            {/* Gradient overlays */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/30 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/20 to-transparent" />
+
+            {/* LIVE badge — top left */}
+            <div className="absolute top-3 left-3 flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-600 shadow-lg">
+                <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                <span className="text-white text-[11px] font-black tracking-[2px] uppercase">Live Now</span>
               </div>
-              <p className="text-white font-black text-lg leading-tight">
-                {liveStatus.title ?? "Live Service"}
+            </div>
+
+            {/* Channel label — top right */}
+            <div className="absolute top-3 right-3">
+              <span className="text-white/70 text-[10px] font-semibold bg-black/40 px-2 py-1 rounded-full">Dahinchu Agni</span>
+            </div>
+
+            {/* Play button — centre */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm border border-white/30 flex items-center justify-center group-hover:bg-white/30 group-hover:scale-110 transition-all duration-200">
+              <PlayCircle size={26} className="text-white ml-0.5" />
+            </div>
+
+            {/* Title + CTA — bottom */}
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <p className="text-white font-black text-base leading-snug line-clamp-2 mb-3 drop-shadow">
+                {effectiveLive.title ?? "Live Service"}
               </p>
               <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white font-bold text-red-700 text-sm justify-center">
-                  <PlayCircle size={16} />
+                <div className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white font-bold text-red-700 text-sm">
+                  <Radio size={13} className="animate-pulse" />
                   Watch Live Now
                 </div>
-                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white/80 text-xs">
-                  <Radio size={12} className="animate-pulse text-red-300" />
-                  <span className="font-medium">On Air</span>
+                <div className="flex items-center gap-1 px-3 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white/80 text-xs font-medium">
+                  <Radio size={11} className="animate-pulse text-red-300" />
+                  On Air
                 </div>
               </div>
             </div>
@@ -422,28 +454,6 @@ export default function Media() {
           </div>
           <ExternalLink size={14} className="text-muted-foreground/40 shrink-0" />
         </a>
-      )}
-
-      {/* ── Live videos in current list (from video feed) ── */}
-      {!liveStatus?.isLive && liveVideos.length > 0 && (
-        <div className="mx-4 mt-3 flex flex-col gap-2">
-          {liveVideos.map((v) => (
-            <a
-              key={v.id}
-              href={`https://www.youtube.com/watch?v=${v.id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3 rounded-2xl bg-red-50 border border-red-200 group"
-            >
-              <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-red-600 shrink-0">
-                <Radio size={10} className="text-white animate-pulse" />
-                <span className="text-white text-[10px] font-bold">LIVE</span>
-              </div>
-              <p className="flex-1 text-red-800 text-sm font-semibold truncate">{v.title}</p>
-              <PlayCircle size={16} className="text-red-500 shrink-0" />
-            </a>
-          ))}
-        </div>
       )}
 
       {/* ── Refresh bar ── */}
