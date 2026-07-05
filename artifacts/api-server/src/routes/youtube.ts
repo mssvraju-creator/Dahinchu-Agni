@@ -149,7 +149,10 @@ const YT_UI_STRINGS = new Set([
   "Add to queue", "Like", "Dislike",
 ]);
 
-// Scrape YouTube channel/live page for live indicator
+// Scrape YouTube channel/live page for live indicator.
+// Key insight: when a channel is actively live, YouTube redirects
+// /channel/{channelId}/live  →  /watch?v={videoId}
+// The redirect URL gives us the channel's OWN live video ID reliably.
 async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; videoId: string | null; title: string | null } | null> {
   try {
     const r = await fetch(`https://www.youtube.com/channel/${channelId}/live`, {
@@ -163,22 +166,38 @@ async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; video
     if (!r.ok) return null;
     const html = await r.text();
 
-    // " watching now" is the most reliable live-only indicator on this page
-    // "isLiveContent":true is set on the video renderer when the stream is active
-    // Note: "liveStreamAbilityRenderer" is always present for live-capable channels — don't use it
-    const hasLive =
-      html.includes(' watching now"') ||
-      html.includes('"isLiveContent":true') ||
-      html.includes('"isLive":true');
-    if (!hasLive) return { isLive: false, videoId: null, title: null };
+    // " watching now" is the ONLY reliable live indicator — do NOT use "isLive":true
+    // or "isLiveContent":true because those appear in recommendation cards too
+    const hasWatching = html.includes(' watching now"');
 
-    // Extract video ID
-    const videoIdMatch = html.match(/"videoId":"([a-zA-Z0-9_-]{11})"/);
-    const videoId = videoIdMatch?.[1] ?? null;
+    // Primary: get video ID from the redirect URL — this is the channel's own video, never a recommendation
+    const finalUrl = r.url ?? "";
+    const redirectVideoId = finalUrl.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
 
-    // Extract title: collect ALL "text":"..." values, filter UI noise, pick longest
-    const allTextMatches = [...html.matchAll(/"text":"([^"]{8,300})"/g)].map((m) => m[1]);
-    const title =
+    if (!hasWatching) return { isLive: false, videoId: null, title: null };
+
+    // Use the redirect-derived ID if available; otherwise scan the canonical videoId
+    // tag (appears before recommendation cards in the rendered HTML)
+    const canonicalMatch = html.match(/"canonical":"https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})"/);
+    const videoId = redirectVideoId ?? canonicalMatch?.[1] ?? null;
+
+    // 1. Best: extract from <title> tag — format is "{Video Title} - YouTube"
+    const htmlTitleRaw = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? "";
+    const htmlTitle = htmlTitleRaw
+      .replace(/ - YouTube$/i, "")
+      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .trim();
+    // Only use <title> if it looks like a video title (has more than channel name length)
+    const fromHtmlTitle = htmlTitle.length > 8 && !/^@?\w+$/.test(htmlTitle) ? htmlTitle : null;
+
+    // 2. Fallback: scan "text":"..." JSON fields, filtering browser/UI noise
+    const allTextMatches = [...html.matchAll(/"text":"([^"]{5,200})"/g)].map((m) => m[1]);
+    const UI_NOISE = [
+      "microphone", "browser settings", "search by voice", "allow access",
+      "voice search", "camera access", "location", "notification",
+    ];
+    const fromJson =
       allTextMatches
         .filter(
           (t) =>
@@ -187,9 +206,12 @@ async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; video
             !/playlist/i.test(t) &&
             !/sign in/i.test(t) &&
             !/again later/i.test(t) &&
-            !/unsubscribe from/i.test(t)
+            !/unsubscribe from/i.test(t) &&
+            !UI_NOISE.some((n) => t.toLowerCase().includes(n))
         )
         .sort((a, b) => b.length - a.length)[0] ?? null;
+
+    const title = fromHtmlTitle ?? fromJson;
 
     return { isLive: true, videoId, title };
   } catch {
@@ -198,12 +220,13 @@ async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; video
 }
 
 // ── Race-based live detection ──────────────────────────────────────────────────
-// Returns as soon as ANY strategy confirms live; doesn't wait for slow ones
+// Returns as soon as ANY strategy confirms live; doesn't wait for slow ones.
+// Only channel-authoritative sources used — no RSS title-keyword guessing.
 function detectLive(channelId: string): Promise<{ isLive: boolean; videoId?: string | null; title?: string | null }> {
   return new Promise((resolve) => {
     let done = false;
     let completed = 0;
-    const TOTAL = 4;
+    const TOTAL = 3;
 
     function onResult(r: { isLive: boolean; videoId?: string | null; title?: string | null } | null) {
       completed++;
@@ -218,7 +241,7 @@ function detectLive(channelId: string): Promise<{ isLive: boolean; videoId?: str
       }
     }
 
-    // Strategy 1: Piped — live stream has duration === -1
+    // Strategy 1: Piped — live stream has duration === -1 (channel-specific, reliable)
     tryPiped(`/channel/${channelId}`)
       .then((data) => {
         if (!data?.relatedStreams) { onResult(null); return; }
@@ -229,31 +252,19 @@ function detectLive(channelId: string): Promise<{ isLive: boolean; videoId?: str
       })
       .catch(() => onResult(null));
 
-    // Strategy 2: Invidious streams endpoint
+    // Strategy 2: Invidious streams endpoint (channel-specific, reliable)
     tryInvidious(`/api/v1/channels/${channelId}/streams`)
       .then((data) => {
-        const lv = data?.videos?.find((v: any) => v.liveNow);
+        const lv = (data?.videos as any[] | undefined)?.find((v: any) => v.liveNow);
         onResult(lv ? { isLive: true, videoId: lv.videoId ?? null, title: lv.title ?? null } : null);
       })
       .catch(() => onResult(null));
 
-    // Strategy 3: Scrape YouTube channel/live page
+    // Strategy 3: Scrape YouTube /channel/live — videoId from redirect URL (never a recommendation)
     scrapeYtLive(channelId).then(onResult).catch(() => onResult(null));
 
-    // Strategy 4: RSS — latest video published < 6h ago with live keyword
-    fetchRss(channelId)
-      .then((videos) => {
-        if (!videos.length) { onResult(null); return; }
-        const v = videos[0];
-        if (!v.isLive) { onResult(null); return; }
-        const ageMs = Date.now() - new Date(v.publishedAt).getTime();
-        if (ageMs > 6 * 60 * 60 * 1000) { onResult(null); return; }
-        onResult({ isLive: true, videoId: v.id, title: v.title });
-      })
-      .catch(() => onResult(null));
-
-    // Hard timeout 9 s
-    setTimeout(() => { if (!done) { done = true; resolve({ isLive: false }); } }, 9000);
+    // Hard timeout 10 s
+    setTimeout(() => { if (!done) { done = true; resolve({ isLive: false }); } }, 10_000);
   });
 }
 

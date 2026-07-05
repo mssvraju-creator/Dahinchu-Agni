@@ -8,35 +8,75 @@ import type { VideoItem } from "@workspace/api-client-react/src/generated/api.sc
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 
 // ── Category helpers ──────────────────────────────────────────────────────────
-type Category = "All" | "Sermons" | "Teaching" | "Lives" | "Shorts";
-const CATEGORIES: Category[] = ["All", "Sermons", "Teaching", "Lives", "Shorts"];
+type Category = "All" | "Sermons" | "Worship" | "Teaching" | "Lives" | "Shorts";
+const CATEGORIES: Category[] = ["All", "Sermons", "Worship", "Teaching", "Lives", "Shorts"];
+
+const CATEGORY_ICONS: Record<Category, string> = {
+  All: "🎬", Sermons: "📖", Worship: "🎵", Teaching: "🏫", Lives: "🔴", Shorts: "⚡",
+};
+
+function parseDurSecs(dur?: string | null): number {
+  if (!dur) return 0;
+  const p = dur.split(":").map(Number);
+  if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+  if (p.length === 2) return p[0] * 60 + p[1];
+  return 0;
+}
 
 function getCategory(v: VideoItem): string {
   if (v.isLive) return "live";
-  if (v.isShort) return "short";
-  const t = v.title.toLowerCase();
+
+  const durSecs = parseDurSecs(v.duration);
+
+  // Shorts: explicitly flagged OR duration ≤ 70 s
+  if (v.isShort || (durSecs > 0 && durSecs <= 70)) return "short";
+
+  const t = (v.title ?? "").toLowerCase();
+
+  // Worship / songs — Telugu + English keywords
+  if (
+    t.includes("worship") || t.includes("praise") || t.includes("song") ||
+    t.includes("aradhana") || t.includes("stotram") || t.includes("hymn") ||
+    t.includes("glory") || t.includes("hosanna") || t.includes("hallelujah") ||
+    t.includes("music") || t.includes("devotional") || t.includes("bhajan") ||
+    t.includes("stuti") || t.includes("geethalu") || t.includes("keertana") ||
+    t.includes("glory to") || t.includes("halleluja") || t.includes("alleluia")
+  ) return "worship";
+
+  // Past live recordings (title contains "live" but video is no longer streaming)
+  if (
+    t.includes(" live ") || t.startsWith("live ") || t.endsWith(" live") ||
+    t.includes("broadcast") || t.includes("live stream") || t.includes("live service") ||
+    t.includes("live worship") || t.includes("live prayer")
+  ) return "live";
+
+  // Sermons / preaching
   if (
     t.includes("sermon") || t.includes("message") || t.includes("gospel") ||
     t.includes("preach") || t.includes("prophecy") || t.includes("word of god") ||
-    t.includes("holy spirit") || t.includes("worship")
+    t.includes("holy spirit") || t.includes("testimony") || t.includes("miracle") ||
+    t.includes("healing") || t.includes("revival") || t.includes("fire") ||
+    t.includes("anointing") || t.includes("prayer") || t.includes("intercession") ||
+    t.includes("deliverance")
   ) return "sermon";
-  if (v.duration) {
-    const p = v.duration.split(":");
-    if (p.length === 2 && parseInt(p[0]) === 0 && parseInt(p[1]) <= 65) return "short";
-    if (p.length >= 2) {
-      const totalMins = p.length === 3
-        ? parseInt(p[0]) * 60 + parseInt(p[1])
-        : parseInt(p[0]);
-      if (totalMins < 10) return "short";
-    }
-  }
+
+  // Teaching / study
+  if (
+    t.includes("teaching") || t.includes("lesson") || t.includes("study") ||
+    t.includes("bible") || t.includes("conference") || t.includes("class") ||
+    t.includes("training") || t.includes("discipleship") || t.includes("seminar")
+  ) return "teaching";
+
+  // Very long videos (> 1.5 h) are likely sermons/services
+  if (durSecs > 5400) return "sermon";
+
   return "teaching";
 }
 
 function filterByCategory(videos: VideoItem[], cat: Category): VideoItem[] {
   if (cat === "All") return videos;
   const map: Record<Category, string> = {
-    All: "", Sermons: "sermon", Teaching: "teaching", Lives: "live", Shorts: "short",
+    All: "", Sermons: "sermon", Worship: "worship", Teaching: "teaching", Lives: "live", Shorts: "short",
   };
   return videos.filter((v) => getCategory(v) === map[cat]);
 }
@@ -178,6 +218,36 @@ function ScrollCard({ v }: { v: VideoItem }) {
       </div>
       <p className="text-foreground text-xs font-semibold leading-snug line-clamp-2">{v.title}</p>
       <p className="text-muted-foreground text-[11px] mt-0.5">{safeDate(v.publishedAt)}</p>
+    </a>
+  );
+}
+
+// Portrait card for Shorts grid (9:16 aspect ratio feel)
+function ShortCard({ v }: { v: VideoItem }) {
+  return (
+    <a
+      href={`https://www.youtube.com/shorts/${v.id}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="block group"
+      data-testid={`video-short-${v.id}`}
+    >
+      <div className="relative rounded-xl overflow-hidden bg-muted" style={{ aspectRatio: "9/16" }}>
+        <img
+          src={v.thumbnailUrl.replace("hqdefault", "maxresdefault")}
+          alt={v.title}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          onError={(e) => { (e.target as HTMLImageElement).src = v.thumbnailUrl; }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+        <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded-md bg-purple-600/90 text-white text-[9px] font-bold">
+          #Short
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 p-2">
+          <p className="text-white text-[11px] font-semibold leading-tight line-clamp-2">{v.title}</p>
+          <p className="text-white/50 text-[10px] mt-0.5">{safeDate(v.publishedAt)}</p>
+        </div>
+      </div>
     </a>
   );
 }
@@ -421,6 +491,7 @@ export default function Media() {
               }`}
               data-testid={`tab-${cat.toLowerCase()}`}
             >
+              <span>{CATEGORY_ICONS[cat]}</span>
               {cat}
               {count > 0 && (
                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
@@ -435,7 +506,7 @@ export default function Media() {
       </div>
 
       {/* ── Video list ── */}
-      <div className="px-4 flex flex-col gap-2 pb-4">
+      <div className="px-4 pb-4">
         {isLoading ? (
           <div className="flex flex-col items-center gap-3 py-16">
             <Loader2 size={28} className="text-primary animate-spin" />
@@ -451,12 +522,30 @@ export default function Media() {
                 : "Try a different category or refresh."}
             </p>
           </div>
-        ) : (
+        ) : activeCategory === "Shorts" ? (
+          /* Shorts grid — 2-column portrait layout like YouTube Shorts */
           <>
+            <div className="grid grid-cols-2 gap-2.5">
+              {filtered.map((v) => <ShortCard key={v.id} v={v} />)}
+            </div>
+            {hasMore && (
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={isFetching}
+                className="mt-4 w-full py-3.5 rounded-2xl border border-border text-primary text-sm font-semibold flex items-center justify-center gap-2 bg-card hover:bg-muted transition-colors"
+                data-testid="btn-load-more"
+              >
+                {isFetching ? <><Loader2 size={16} className="animate-spin" /> Loading…</> : "Load more"}
+              </button>
+            )}
+          </>
+        ) : (
+          /* Standard list layout for all other categories */
+          <div className="flex flex-col gap-2">
             {/* Featured first video (full width) */}
             <FeaturedVideoCard
               v={filtered[0]}
-              badge={filtered[0].isLive ? "🔴 Live" : activeCategory === "All" ? "Latest" : activeCategory}
+              badge={filtered[0].isLive ? "🔴 Live" : activeCategory === "All" ? "Latest" : `${CATEGORY_ICONS[activeCategory]} ${activeCategory}`}
             />
 
             {/* Rest as compact rows */}
@@ -488,7 +577,7 @@ export default function Media() {
               <ExternalLink size={14} />
               View full channel on YouTube
             </a>
-          </>
+          </div>
         )}
       </div>
     </AppShell>
