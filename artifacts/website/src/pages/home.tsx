@@ -199,25 +199,31 @@ export default function Home() {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex gap-2.5 mx-4 mt-3">
+      <div className="flex flex-col gap-2 mx-4 mt-3">
         <a
           href={liveStatus?.isLive && liveStatus.videoId ? `https://www.youtube.com/watch?v=${liveStatus.videoId}` : `${MINISTRY.youtubeChannelUrl}/live`}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl bg-red-600 font-semibold text-white text-sm"
+          className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-red-600 font-bold text-white text-sm"
           data-testid="btn-watch-live"
         >
-          <div className="w-1.5 h-1.5 rounded-full bg-white" />
+          <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
           Watch Live
         </a>
-        <Link href="/give" className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-semibold text-white text-sm" style={{ backgroundColor: "#C8860A" }} data-testid="btn-give">
-          <Gift size={14} className="text-white" />
-          Give
-        </Link>
-        <Link href="/prayer" className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-2xl font-semibold text-white text-sm" style={{ backgroundColor: "#7C3AED" }} data-testid="btn-prayer">
-          <Heart size={14} className="text-white" />
-          Prayer
-        </Link>
+        <div className="grid grid-cols-3 gap-2">
+          <Link href="/give" className="flex flex-col items-center justify-center gap-1 py-3 rounded-2xl font-semibold text-white text-xs" style={{ backgroundColor: "#C8860A" }} data-testid="btn-give">
+            <Gift size={17} className="text-white" />
+            Give
+          </Link>
+          <Link href="/bible" className="flex flex-col items-center justify-center gap-1 py-3 rounded-2xl font-semibold text-white text-xs" style={{ backgroundColor: "#0B2A7A" }} data-testid="btn-bible">
+            <BookOpen size={17} className="text-white" />
+            Bible
+          </Link>
+          <Link href="/prayer" className="flex flex-col items-center justify-center gap-1 py-3 rounded-2xl font-semibold text-white text-xs" style={{ backgroundColor: "#7C3AED" }} data-testid="btn-prayer">
+            <Heart size={17} className="text-white" />
+            Prayer
+          </Link>
+        </div>
       </div>
 
       {/* Latest Messages */}

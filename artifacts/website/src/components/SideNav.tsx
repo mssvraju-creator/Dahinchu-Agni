@@ -16,6 +16,7 @@ const PRIMARY_TABS = [
 ];
 
 const SECONDARY_TABS = [
+  { href: "/bible", label: "Bible", icon: BookOpen },
   { href: "/resources", label: "Resources", icon: BookOpen },
   { href: "/give", label: "Give", icon: Gift },
   { href: "/about", label: "About", icon: Info },

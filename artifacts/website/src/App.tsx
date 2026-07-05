@@ -16,6 +16,7 @@ import About from "@/pages/about";
 import Give from "@/pages/give";
 import Contact from "@/pages/contact";
 import Admin from "@/pages/admin";
+import Bible from "@/pages/bible";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,7 @@ function Router() {
       <Route path="/about" component={About} />
       <Route path="/give" component={Give} />
       <Route path="/contact" component={Contact} />
+      <Route path="/bible" component={Bible} />
       <Route path="/admin" component={Admin} />
       <Route component={NotFound} />
     </Switch>

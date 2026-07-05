@@ -10,6 +10,7 @@ export function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/media", label: "Sermons" },
+    { href: "/bible", label: "Bible" },
     { href: "/events", label: "Events" },
     { href: "/prayer", label: "Prayer" },
     { href: "/resources", label: "Resources" },
