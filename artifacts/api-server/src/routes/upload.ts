@@ -38,7 +38,13 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
 });
 
 router.get("/uploads/:filename", (req: Request, res: Response) => {
-  const safe = path.basename(req.params.filename);
+  const filename = req.params.filename;
+  if (typeof filename !== "string") {
+    res.status(400).json({ error: "Invalid filename" });
+    return;
+  }
+
+  const safe = path.basename(filename);
   const filePath = path.join(uploadsDir, safe);
   if (!fs.existsSync(filePath)) {
     res.status(404).json({ error: "File not found" });
