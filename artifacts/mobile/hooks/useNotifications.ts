@@ -4,6 +4,7 @@ import Constants from "expo-constants";
 import { useEffect, useRef } from "react";
 import { Platform, Alert, Linking } from "react-native";
 import { router } from "expo-router";
+import { API_URL } from "@/constants/api";
 
 // Only set the notification handler on native (web doesn't support it)
 if (Platform.OS !== "web") {
@@ -41,11 +42,7 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
 
   if (!finalGranted) {
     const requested = (await Notifications.requestPermissionsAsync({
-      ios: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
+      ios: { allowAlert: true, allowBadge: true, allowSound: true },
     })) as unknown as PermResult;
     finalGranted = requested.granted;
   }
@@ -80,8 +77,9 @@ async function registerForPushNotificationsAsync(): Promise<string | undefined> 
 }
 
 async function registerTokenWithServer(token: string) {
+  const url = `${API_URL}/api/notifications/register`;
   try {
-    await fetch("/api/notifications/register", {
+    await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ token, platform: Platform.OS }),
@@ -104,23 +102,18 @@ export function useNotifications() {
   useEffect(() => {
     if (Platform.OS === "web") return;
 
-    // Request permission + register token
     registerForPushNotificationsAsync().then((token) => {
       if (token) registerTokenWithServer(token);
     });
 
-    // Foreground notification received
-    notifListener.current = Notifications.addNotificationReceivedListener(
-      () => { /* setNotificationHandler already shows the UI */ }
-    );
+    notifListener.current = Notifications.addNotificationReceivedListener(() => {
+      // setNotificationHandler already shows the UI
+    });
 
-    // User tapped a notification
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        const data = (response.notification.request.content.data ?? {}) as Record<string, any>;
-        handleNotificationTap(data);
-      }
-    );
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = (response.notification.request.content.data ?? {}) as Record<string, any>;
+      handleNotificationTap(data);
+    });
 
     return () => {
       notifListener.current?.remove();
@@ -129,7 +122,6 @@ export function useNotifications() {
   }, []);
 }
 
-// Call once on launch to navigate if app was opened from a notification
 export async function handleInitialNotification() {
   if (Platform.OS === "web") return;
   try {

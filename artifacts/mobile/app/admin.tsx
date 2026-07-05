@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
+import { API_URL } from "@/constants/api";
 import React, { useRef, useState } from "react";
 import {
   Alert,
@@ -65,7 +66,7 @@ export default function AdminScreen() {
 
   React.useEffect(() => {
     if (isAdmin) {
-      fetch("/api/notifications/stats")
+      fetch(`${API_URL}/api/notifications/stats`)
         .then((r) => r.json())
         .then((d) => setNotifStats(d))
         .catch(() => {});
@@ -402,7 +403,7 @@ export default function AdminScreen() {
                       text: "Send",
                       onPress: async () => {
                         try {
-                          const r = await fetch("/api/notifications/send-live", {
+                          const r = await fetch(`${API_URL}/api/notifications/send-live`, {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ passcode: "DAFIRE94" }),
@@ -474,7 +475,7 @@ export default function AdminScreen() {
                   }
                   setNotifSending(true);
                   try {
-                    const r = await fetch("/api/notifications/send", {
+                    const r = await fetch(`${API_URL}/api/notifications/send`, {
                       method: "POST",
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ passcode: "DAFIRE94", title: notifTitle.trim(), body: notifBody.trim(), type: notifType }),

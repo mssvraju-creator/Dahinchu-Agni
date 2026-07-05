@@ -4,7 +4,8 @@ import { useGetLiveStream, useGetVideos, getGetLiveStreamQueryKey } from "@works
 import { AppShell } from "@/components/AppShell";
 import { useAdmin } from "@/context/AdminContext";
 import { MINISTRY, BIBLE_VERSES, type MinistryEvent } from "@/constants/ministry";
-import { PlayCircle, Gift, Heart, BookOpen, ExternalLink, Calendar, MapPin, Clock, Tv, Bell, Radio } from "lucide-react";
+import { useWebPush } from "@/hooks/useWebPush";
+import { PlayCircle, Gift, Heart, BookOpen, ExternalLink, Calendar, MapPin, Clock, Tv, Bell, Radio, BellOff, X } from "lucide-react";
 
 const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 
@@ -51,6 +52,33 @@ export default function Home() {
   );
   const { data: videosData, isLoading: videosLoading } = useGetVideos({ channelId: CHANNEL_ID, page: 1 });
   const { events, adminSettings } = useAdmin();
+  const { state: pushState, subscribe } = useWebPush();
+  const [notifDismissed, setNotifDismissed] = useState(() => {
+    try { return localStorage.getItem("da-notif-dismissed") === "1"; } catch { return false; }
+  });
+  const [subscribing, setSubscribing] = useState(false);
+
+  async function handleSubscribe() {
+    setSubscribing(true);
+    const ok = await subscribe();
+    setSubscribing(false);
+    if (!ok && pushState !== "subscribed") {
+      setNotifDismissed(true);
+      try { localStorage.setItem("da-notif-dismissed", "1"); } catch {}
+    }
+  }
+
+  function dismissNotifPrompt() {
+    setNotifDismissed(true);
+    try { localStorage.setItem("da-notif-dismissed", "1"); } catch {}
+  }
+
+  const showNotifPrompt =
+    !notifDismissed &&
+    pushState !== "loading" &&
+    pushState !== "subscribed" &&
+    pushState !== "unsupported" &&
+    pushState !== "denied";
 
   const verse = BIBLE_VERSES[new Date().getDate() % BIBLE_VERSES.length];
   const latestVideos = videosData?.videos.slice(0, 5) ?? [];
@@ -72,6 +100,39 @@ export default function Home() {
           <p className="text-amber-900 text-xs leading-relaxed">{adminSettings.noticeText}</p>
         </div>
       ) : null}
+
+      {/* Push Notification Subscribe Prompt */}
+      {showNotifPrompt && (
+        <div className="mx-4 mt-3 flex items-center gap-3 px-3.5 py-2.5 rounded-2xl bg-card border border-border">
+          <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+            <Bell size={15} className="text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-foreground text-xs font-semibold leading-tight">Get notified when we go Live</p>
+            <p className="text-muted-foreground text-[10px] mt-0.5">Sermons, live streams & events</p>
+          </div>
+          <button
+            onClick={handleSubscribe}
+            disabled={subscribing}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-white text-xs font-bold shrink-0 disabled:opacity-60"
+            data-testid="btn-subscribe-notifications"
+          >
+            {subscribing ? (
+              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Bell size={11} />
+            )}
+            Subscribe
+          </button>
+          <button
+            onClick={dismissNotifPrompt}
+            className="text-muted-foreground/50 hover:text-muted-foreground shrink-0 p-0.5"
+            aria-label="Dismiss"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Live Banner */}
       {liveStatus?.isLive ? (

@@ -1,1 +1,2 @@
 - [expo-notifications web guards](expo-notifications-web.md) — several APIs crash on web; must guard with Platform.OS !== 'web' and cast PermissionResponse types
+- [notification system architecture](notification-system.md) — dual-channel push (Expo + Web Push/VAPID); VAPID keys in env vars; API_URL helper pattern for mobile

@@ -346,15 +346,28 @@ function NotificationsTab() {
     setTimeout(() => setSent(null), 3000);
   }
 
+  const stats = statsData as any;
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4 p-5 rounded-xl bg-card border border-border">
-        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-          <Users size={22} className="text-primary" />
+      <div className="flex gap-3">
+        <div className="flex-1 flex items-center gap-3 p-4 rounded-xl bg-card border border-border">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+            <Users size={18} className="text-primary" />
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">App (Expo)</p>
+            <p className="text-xl font-black text-foreground">{isLoading ? "—" : (stats?.subscribers ?? 0)}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-muted-foreground text-sm">Push Subscribers</p>
-          <p className="text-2xl font-black text-foreground">{isLoading ? "—" : (statsData?.subscribers ?? 0)}</p>
+        <div className="flex-1 flex items-center gap-3 p-4 rounded-xl bg-card border border-border">
+          <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-center shrink-0">
+            <Bell size={18} className="text-blue-600" />
+          </div>
+          <div>
+            <p className="text-muted-foreground text-xs">Web (Browser)</p>
+            <p className="text-xl font-black text-foreground">{isLoading ? "—" : (stats?.webSubscribers ?? 0)}</p>
+          </div>
         </div>
       </div>
 
