@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
+import { broadcastNotification } from "./notifications.js";
 
 const router = Router();
 
@@ -125,6 +126,8 @@ type BibleQuestion = {
   question: string;
   verse: string;
   answered: boolean;
+  answer?: string;
+  answeredAt?: string;
   createdAt: string;
 };
 
@@ -249,13 +252,29 @@ router.get("/bible/questions", (_req, res) => {
   res.json(loadQuestions());
 });
 
-// PATCH /bible/questions/:id — mark answered (admin)
-router.patch("/bible/questions/:id", (req, res) => {
+// PATCH /bible/questions/:id — answer question (admin)
+router.patch("/bible/questions/:id", async (req, res) => {
   const questions = loadQuestions();
   const idx = questions.findIndex((q) => q.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: "Not found" });
-  questions[idx] = { ...questions[idx], answered: true };
+  const answer = (req.body.answer as string | undefined)?.trim() || "";
+  questions[idx] = {
+    ...questions[idx],
+    answered: true,
+    answer,
+    answeredAt: new Date().toISOString(),
+  };
   saveQuestions(questions);
+
+  // Send push notification to all subscribers
+  const q = questions[idx];
+  const verseRef = q.verse ? ` (${q.verse})` : "";
+  await broadcastNotification({
+    title: "📖 Your Bible Question Was Answered!",
+    body: `Staff replied to your question${verseRef}: "${q.question.slice(0, 80)}…"`,
+    data: { type: "bible-answer", questionId: q.id },
+  }).catch(() => {});
+
   return res.json({ ok: true });
 });
 

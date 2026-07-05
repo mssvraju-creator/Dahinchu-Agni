@@ -1,10 +1,11 @@
 import { Link } from "wouter";
 import { AppShell } from "@/components/AppShell";
 import { useAdmin } from "@/context/AdminContext";
+import { useLanguage } from "@/context/LanguageContext";
 import { MINISTRY } from "@/constants/ministry";
 import {
   Info, BookOpen, Gift, MapPin, Youtube, Tv,
-  Facebook, Instagram, Globe, Shield, LogOut, ChevronRight
+  Facebook, Instagram, Globe, Shield, LogOut, ChevronRight, Languages,
 } from "lucide-react";
 
 interface MenuItem {
@@ -16,18 +17,21 @@ interface MenuItem {
   color?: string;
   badge?: string;
   onPress?: () => void;
+  highlight?: boolean;
 }
 
 function MenuRow({ item }: { item: MenuItem }) {
   const iconBg = (item.color ?? "#E84C1E") + "18";
 
   const inner = (
-    <div className="flex items-center gap-3 px-4 py-3.5 bg-card border-b border-border last:border-0 active:opacity-70 transition-opacity">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: iconBg }}>
+    <div className={`flex items-center gap-3 px-4 py-3.5 bg-card border-b border-border last:border-0 active:opacity-70 transition-opacity ${
+      item.highlight ? "bg-primary/5 dark:bg-primary/10" : ""
+    }`}>
+      <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: item.highlight ? "#E84C1E22" : iconBg }}>
         {item.icon}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-foreground text-[15px] font-medium leading-tight">{item.label}</p>
+        <p className={`text-[15px] font-medium leading-tight ${item.highlight ? "text-primary" : "text-foreground"}`}>{item.label}</p>
         {item.sublabel && <p className="text-muted-foreground text-xs mt-0.5 leading-snug">{item.sublabel}</p>}
       </div>
       {item.badge && (
@@ -35,7 +39,7 @@ function MenuRow({ item }: { item: MenuItem }) {
           {item.badge}
         </span>
       )}
-      <ChevronRight size={15} className="text-muted-foreground/40 shrink-0" />
+      <ChevronRight size={15} className={item.highlight ? "text-primary/50 shrink-0" : "text-muted-foreground/40 shrink-0"} />
     </div>
   );
 
@@ -68,6 +72,7 @@ function MenuSection({ title, items }: { title: string; items: MenuItem[] }) {
 
 export default function More() {
   const { isAdmin, logout, adminSettings } = useAdmin();
+  const { lang, toggleLanguage, t } = useLanguage();
 
   const ministryItems: MenuItem[] = [
     {
@@ -138,6 +143,14 @@ export default function More() {
 
   const appItems: MenuItem[] = [
     {
+      icon: <Languages size={17} className="text-primary" />,
+      label: lang === "en" ? "తెలుగులో చూడండి" : "Switch to English",
+      sublabel: lang === "en" ? "Switch the entire app to Telugu" : "అప్లికేషన్‌ను ఇంగ్లీష్‌కి మార్చండి",
+      color: "#E84C1E",
+      onPress: toggleLanguage,
+      highlight: true,
+    },
+    {
       icon: <Shield size={17} className="text-primary" />,
       label: "Admin Panel",
       sublabel: isAdmin ? "Admin mode active" : "Manage events, resources & prayers",
@@ -156,7 +169,7 @@ export default function More() {
   ];
 
   return (
-    <AppShell subtitle="Explore">
+    <AppShell subtitle={t("more")}>
       {/* Ministry hero card */}
       <Link href="/about" className="block mx-4 mt-4 mb-5">
         <div
@@ -192,7 +205,7 @@ export default function More() {
 
       <MenuSection title="Ministry" items={ministryItems} />
       <MenuSection title="Media & Online" items={mediaItems} />
-      <MenuSection title="App" items={appItems} />
+      <MenuSection title={t("language") + " & App"} items={appItems} />
 
       <p className="text-center text-muted-foreground/40 text-xs pb-6 px-4">
         Dahinchu Agni Ministries · v1.0.0 · {MINISTRY.fullName}

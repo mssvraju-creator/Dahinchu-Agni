@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AdminProvider } from "@/context/AdminContext";
 import { PrayerProvider } from "@/context/PrayerContext";
+import { LanguageProvider } from "@/context/LanguageContext";
 import NotFound from "@/pages/not-found";
 
 import Home from "@/pages/home";
@@ -49,6 +50,7 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <LanguageProvider>
       <AdminProvider>
         <PrayerProvider>
           <TooltipProvider>
@@ -59,6 +61,7 @@ function App() {
           </TooltipProvider>
         </PrayerProvider>
       </AdminProvider>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

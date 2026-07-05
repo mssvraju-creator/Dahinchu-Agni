@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { useAdmin, type AdminSettings } from "@/context/AdminContext";
 import { usePrayer } from "@/context/PrayerContext";
@@ -8,12 +8,14 @@ import { Button } from "@/components/ui/button";
 import {
   Lock, LogOut, Calendar, BookOpen, Heart, Bell, Settings,
   Plus, Trash2, CheckCircle2, Users, Send, Loader2, X, Upload, FileAudio, FileVideo, File,
+  MessageSquare, ChevronDown, ChevronUp,
 } from "lucide-react";
 
 const TABS = [
   { id: "events", label: "Events", icon: Calendar },
   { id: "resources", label: "Resources", icon: BookOpen },
   { id: "prayers", label: "Prayers", icon: Heart },
+  { id: "bible-qa", label: "Bible Q&A", icon: MessageSquare },
   { id: "notifications", label: "Notifications", icon: Bell },
   { id: "settings", label: "Settings", icon: Settings },
 ] as const;
@@ -317,6 +319,179 @@ function PrayersTab() {
   );
 }
 
+type BibleQuestion = {
+  id: string;
+  name: string;
+  email: string;
+  question: string;
+  verse: string;
+  answered: boolean;
+  answer?: string;
+  answeredAt?: string;
+  createdAt: string;
+};
+
+function BibleQATab() {
+  const [questions, setQuestions] = useState<BibleQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  function loadQuestions() {
+    setLoading(true);
+    fetch("/api/bible/questions")
+      .then((r) => r.json())
+      .then((data) => { setQuestions(data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }
+
+  useEffect(() => { loadQuestions(); }, []);
+
+  async function handleAnswer(q: BibleQuestion) {
+    const answer = answers[q.id]?.trim();
+    if (!answer) return;
+    setSending(q.id);
+    try {
+      await fetch(`/api/bible/questions/${q.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer }),
+      });
+      setSent(q.id);
+      setAnswers((a) => ({ ...a, [q.id]: "" }));
+      loadQuestions();
+      setTimeout(() => setSent(null), 3000);
+    } catch {}
+    setSending(null);
+  }
+
+  const unanswered = questions.filter((q) => !q.answered);
+  const answered = questions.filter((q) => q.answered);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-foreground">Bible Q&A</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">{unanswered.length} awaiting reply · {answered.length} answered</p>
+        </div>
+        <button onClick={loadQuestions} className="px-3 py-1.5 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:bg-muted transition-colors">
+          Refresh
+        </button>
+      </div>
+
+      {loading && (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 size={24} className="animate-spin text-primary" />
+        </div>
+      )}
+
+      {!loading && unanswered.length === 0 && answered.length === 0 && (
+        <div className="py-16 text-center text-muted-foreground">
+          <MessageSquare size={40} className="mx-auto mb-3 opacity-30" />
+          <p>No Bible questions yet</p>
+        </div>
+      )}
+
+      {/* Unanswered */}
+      {unanswered.length > 0 && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Awaiting Reply</p>
+          {unanswered.map((q) => (
+            <div key={q.id} className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/10 dark:border-amber-800 overflow-hidden">
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <p className="font-semibold text-foreground text-sm">{q.name}</p>
+                      {q.email && <p className="text-xs text-muted-foreground">{q.email}</p>}
+                    </div>
+                    {q.verse && (
+                      <span className="inline-block px-2 py-0.5 rounded bg-primary/10 text-primary text-[11px] font-semibold mb-2">
+                        📖 {q.verse}
+                      </span>
+                    )}
+                    <p className="text-foreground/80 text-sm leading-relaxed">{q.question}</p>
+                    <p className="text-muted-foreground text-[11px] mt-1">{timeAgo(q.createdAt)}</p>
+                  </div>
+                </div>
+
+                {sent === q.id ? (
+                  <div className="flex items-center gap-2 text-green-600 text-sm font-medium py-2">
+                    <CheckCircle2 size={16} /> Answer sent! Push notification delivered to subscribers.
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    <textarea
+                      rows={3}
+                      placeholder="Type your answer here… (a push notification will be sent when saved)"
+                      value={answers[q.id] || ""}
+                      onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+                      className="input-field resize-none text-sm"
+                    />
+                    <Button
+                      onClick={() => handleAnswer(q)}
+                      disabled={sending === q.id || !answers[q.id]?.trim()}
+                      className="bg-primary text-white hover:bg-primary/90 self-end"
+                      size="sm"
+                    >
+                      {sending === q.id
+                        ? <><Loader2 size={14} className="animate-spin mr-2" /> Sending…</>
+                        : <><Send size={14} className="mr-2" /> Send Answer & Notify</>
+                      }
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Answered */}
+      {answered.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Answered ({answered.length})</p>
+          {answered.map((q) => (
+            <div key={q.id} className="rounded-xl border border-border bg-card overflow-hidden">
+              <button
+                onClick={() => setExpanded(expanded === q.id ? null : q.id)}
+                className="w-full flex items-center justify-between gap-3 p-4 text-left"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                    <p className="font-semibold text-foreground text-sm">{q.name}</p>
+                    {q.verse && <span className="text-[11px] text-primary font-semibold">· {q.verse}</span>}
+                  </div>
+                  <p className="text-sm text-muted-foreground line-clamp-1">{q.question}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="flex items-center gap-1 text-[11px] text-green-600 font-semibold">
+                    <CheckCircle2 size={13} /> Answered
+                  </span>
+                  {expanded === q.id ? <ChevronUp size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
+                </div>
+              </button>
+              {expanded === q.id && (
+                <div className="px-4 pb-4 pt-0 border-t border-border">
+                  <p className="text-sm text-foreground/70 leading-relaxed mb-3">{q.question}</p>
+                  <div className="p-3 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+                    <p className="text-[11px] font-bold text-green-700 dark:text-green-400 uppercase tracking-wide mb-1">Staff Answer</p>
+                    <p className="text-sm text-foreground leading-relaxed">{q.answer}</p>
+                  </div>
+                  {q.answeredAt && <p className="text-[11px] text-muted-foreground mt-2">Answered {timeAgo(q.answeredAt)}</p>}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NotificationsTab() {
   const { data: statsData, isLoading } = useGetNotificationStats();
   const [liveTitle, setLiveTitle] = useState("");
@@ -458,6 +633,7 @@ export default function Admin() {
     events: <EventsTab />,
     resources: <ResourcesTab />,
     prayers: <PrayersTab />,
+    "bible-qa": <BibleQATab />,
     notifications: <NotificationsTab />,
     settings: <SettingsTab />,
   }[activeTab];

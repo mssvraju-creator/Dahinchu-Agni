@@ -96,7 +96,7 @@ async function sendWebPushNotifications(payload: { title: string; body: string; 
 }
 
 // ── Broadcast to all channels ─────────────────────────────────────────────────
-async function broadcastNotification(payload: { title: string; body: string; data?: Record<string, unknown> }) {
+export async function broadcastNotification(payload: { title: string; body: string; data?: Record<string, unknown> }) {
   await Promise.all([
     // Expo (mobile) push
     pushTokens.length > 0
