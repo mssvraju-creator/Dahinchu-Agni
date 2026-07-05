@@ -10,7 +10,7 @@
     "vercel-build": "pnpm --filter @workspace/website run build"
   },
   "private": true,
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@9.15.0",
   "devDependencies": {
     "prettier": "^3.8.3",
     "typescript": "~5.9.3"
