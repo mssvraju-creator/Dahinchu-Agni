@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 
-// Public VAPID key — safe to include in client code (not secret)
-const VAPID_PUBLIC_KEY = "BHZyeOdVhv-Zxegln3snXlljH9eSanMDI_9QthL0Yi-P1KFGX1pmmf2-aFAuIkbeYsUuH6O1lsJX494Hm3NPpng";
+// Public VAPID key — safe to include in client code (not secret).
+// Reads from VITE_VAPID_PUBLIC_KEY at build time so forks can supply their own key pair.
+// Falls back to the key embedded in this repo (matches the server's VAPID_PUBLIC_KEY env var).
+const VAPID_PUBLIC_KEY: string =
+  (import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined) ||
+  "BHZyeOdVhv-Zxegln3snXlljH9eSanMDI_9QthL0Yi-P1KFGX1pmmf2-aFAuIkbeYsUuH6O1lsJX494Hm3NPpng";
 
 type PushState = "unsupported" | "denied" | "unsubscribed" | "subscribed" | "loading";
 

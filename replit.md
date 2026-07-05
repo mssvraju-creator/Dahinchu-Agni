@@ -38,15 +38,38 @@ pnpm --filter @workspace/website run dev
 
 ```bash
 # Build everything
-pnpm --filter @workspace/website run build     # → artifacts/website/dist/public/
-pnpm --filter @workspace/api-server run build  # → artifacts/api-server/dist/
+VITE_VAPID_PUBLIC_KEY=<your_key> pnpm --filter @workspace/website run build  # → artifacts/website/dist/public/
+pnpm --filter @workspace/api-server run build                                 # → artifacts/api-server/dist/
 
 # Serve from one process (API server also serves the website)
-NODE_ENV=production node artifacts/api-server/dist/index.mjs
+VAPID_PUBLIC_KEY=<your_key> VAPID_PRIVATE_KEY=<your_private_key> \
+  VAPID_SUBJECT=mailto:you@example.com NODE_ENV=production \
+  node artifacts/api-server/dist/index.mjs
 # → http://localhost:8080 serves both /api and the website (SPA)
 ```
 
 > On Replit, the platform handles the reverse proxy and static file serving automatically — no extra config needed.
+
+### Push Notification Setup (Standalone)
+
+```bash
+# 1. Generate a VAPID key pair once for your deployment:
+node -e "const wp=require('./artifacts/api-server/node_modules/web-push'); \
+  const k=wp.generateVAPIDKeys(); \
+  console.log('PUBLIC='+k.publicKey+'\nPRIVATE='+k.privateKey)"
+
+# 2. Set these environment variables (add to .env or your hosting platform):
+#    VAPID_PUBLIC_KEY    = <publicKey>     (server)
+#    VAPID_PRIVATE_KEY   = <privateKey>    (server — keep secret)
+#    VAPID_SUBJECT       = mailto:you@example.com
+#    VITE_VAPID_PUBLIC_KEY = <publicKey>   (website build — same as PUBLIC)
+#    EXPO_PUBLIC_API_URL = https://your-api.com  (mobile native builds)
+
+# 3. Rebuild the website so the new public key is baked in:
+VITE_VAPID_PUBLIC_KEY=<publicKey> pnpm --filter @workspace/website run build
+```
+
+See `.env.example` at the repo root for a ready-to-copy template.
 
 ## Stack
 
