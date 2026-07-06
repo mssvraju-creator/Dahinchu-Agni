@@ -2,7 +2,7 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
-import { existsSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
@@ -52,7 +52,9 @@ if (process.env.NODE_ENV === "production" && !process.env.REPL_ID) {
     app.use(express.static(staticDir));
     // SPA fallback — send index.html for any unmatched route
     app.get("*", (_req: Request, res: Response) => {
-      res.sendFile(path.join(staticDir, "index.html"));
+      const indexPath = path.join(staticDir, "index.html");
+      res.type("html");
+      res.send(readFileSync(indexPath, "utf8"));
     });
     logger.info({ staticDir }, "Serving website static files");
   } else {
