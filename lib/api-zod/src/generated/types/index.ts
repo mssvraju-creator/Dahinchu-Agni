@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export * from './getLiveStreamParams';
-export * from './getVideosParams';
-export * from './healthStatus';
-export * from './liveStatus';
-export * from './notificationStats';
-export * from './videoItem';
-export * from './videoPage';
+export * from './getLiveStreamParams.js';
+export * from './getVideosParams.js';
+export * from './healthStatus.js';
+export * from './liveStatus.js';
+export * from './notificationStats.js';
+export * from './videoItem.js';
+export * from './videoPage.js';

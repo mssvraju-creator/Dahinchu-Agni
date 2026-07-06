@@ -5,7 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { VideoItem } from './videoItem';
+import type { VideoItem } from './videoItem.js';
 
 export interface VideoPage {
   videos: VideoItem[];

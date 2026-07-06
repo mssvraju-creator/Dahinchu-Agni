@@ -22,10 +22,10 @@ import type {
   LiveStatus,
   NotificationStats,
   VideoPage
-} from './api.schemas';
+} from './api.schemas.js';
 
-import { customFetch } from '../custom-fetch';
-import type { ErrorType } from '../custom-fetch';
+import { customFetch } from '../custom-fetch.js';
+import type { ErrorType } from '../custom-fetch.js';
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
