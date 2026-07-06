@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request as ExpressRequest, Response as ExpressResponse } from "express";
 
 const router = Router();
 
@@ -269,7 +269,7 @@ function detectLive(channelId: string): Promise<{ isLive: boolean; videoId?: str
 }
 
 // ── RSS proxy ─────────────────────────────────────────────────────────────────
-router.get("/youtube/feed", async (req: Request, res: Response) => {
+router.get("/youtube/feed", async (req: ExpressRequest, res: ExpressResponse) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
   try {
     const upstream = await fetch(
@@ -287,7 +287,7 @@ router.get("/youtube/feed", async (req: Request, res: Response) => {
 });
 
 // ── GET /youtube/videos ───────────────────────────────────────────────────────
-router.get("/youtube/videos", async (req: Request, res: Response) => {
+router.get("/youtube/videos", async (req: ExpressRequest, res: ExpressResponse) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const cacheKey = `videos:${channelId}:${page}`;
@@ -374,7 +374,7 @@ router.get("/youtube/videos", async (req: Request, res: Response) => {
 });
 
 // ── GET /youtube/live ─────────────────────────────────────────────────────────
-router.get("/youtube/live", async (req: Request, res: Response) => {
+router.get("/youtube/live", async (req: ExpressRequest, res: ExpressResponse) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
   const cacheKey = `live:${channelId}`;
 
@@ -400,7 +400,7 @@ router.get("/youtube/live", async (req: Request, res: Response) => {
 });
 
 // ── POST /youtube/cache/clear ── force refresh (admin)
-router.post("/youtube/cache/clear", (req: Request, res: Response) => {
+router.post("/youtube/cache/clear", (req: ExpressRequest, res: ExpressResponse) => {
   const { passcode } = req.body as { passcode?: string };
   if (passcode !== "DAFIRE94") { res.status(401).json({ error: "Unauthorized" }); return; }
   cache.clear();

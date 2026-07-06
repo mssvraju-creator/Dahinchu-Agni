@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request as ExpressRequest, Response as ExpressResponse } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -22,7 +22,7 @@ const upload = multer({
   limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
 });
 
-router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
+router.post("/upload", upload.single("file"), (req: ExpressRequest, res: ExpressResponse) => {
   if (!req.file) {
     res.status(400).json({ error: "No file uploaded" });
     return;
@@ -37,7 +37,7 @@ router.post("/upload", upload.single("file"), (req: Request, res: Response) => {
   });
 });
 
-router.get("/uploads/:filename", (req: Request, res: Response) => {
+router.get("/uploads/:filename", (req: ExpressRequest, res: ExpressResponse) => {
   const filename = req.params.filename;
   if (typeof filename !== "string") {
     res.status(400).json({ error: "Invalid filename" });

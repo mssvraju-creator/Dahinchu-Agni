@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request as ExpressRequest, Response as ExpressResponse } from "express";
 import fs from "fs";
 import path from "path";
 import webPush from "web-push";
@@ -216,7 +216,7 @@ export function startNotificationPoller() {
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 // Register Expo push token (mobile app)
-router.post("/notifications/register", (req: Request, res: Response) => {
+router.post("/notifications/register", (req: ExpressRequest, res: ExpressResponse) => {
   const { token, platform } = req.body as { token?: string; platform?: string };
   if (!token || typeof token !== "string") { res.status(400).json({ error: "token required" }); return; }
   if (!pushTokens.includes(token)) { pushTokens.push(token); saveTokens(); }
@@ -225,7 +225,7 @@ router.post("/notifications/register", (req: Request, res: Response) => {
 });
 
 // Register browser Web Push subscription
-router.post("/notifications/subscribe-web", (req: Request, res: Response) => {
+router.post("/notifications/subscribe-web", (req: ExpressRequest, res: ExpressResponse) => {
   const sub = req.body as WebSub;
   if (!sub?.endpoint) { res.status(400).json({ error: "valid push subscription required" }); return; }
   const exists = webSubscriptions.some((s) => s.endpoint === sub.endpoint);
@@ -235,7 +235,7 @@ router.post("/notifications/subscribe-web", (req: Request, res: Response) => {
 });
 
 // Unsubscribe browser Web Push
-router.post("/notifications/unsubscribe-web", (req: Request, res: Response) => {
+router.post("/notifications/unsubscribe-web", (req: ExpressRequest, res: ExpressResponse) => {
   const { endpoint } = req.body as { endpoint?: string };
   if (!endpoint) { res.status(400).json({ error: "endpoint required" }); return; }
   webSubscriptions = webSubscriptions.filter((s) => s.endpoint !== endpoint);
@@ -244,17 +244,17 @@ router.post("/notifications/unsubscribe-web", (req: Request, res: Response) => {
 });
 
 // Get subscriber count (public)
-router.get("/notifications/stats", (_req: Request, res: Response) => {
+router.get("/notifications/stats", (_req: ExpressRequest, res: ExpressResponse) => {
   res.json({ subscribers: pushTokens.length, webSubscribers: webSubscriptions.length });
 });
 
 // VAPID public key (needed by browser to subscribe)
-router.get("/notifications/vapid-public-key", (_req: Request, res: Response) => {
+router.get("/notifications/vapid-public-key", (_req: ExpressRequest, res: ExpressResponse) => {
   res.json({ key: VAPID_PUBLIC });
 });
 
 // Admin: send a custom broadcast
-router.post("/notifications/send", async (req: Request, res: Response) => {
+router.post("/notifications/send", async (req: ExpressRequest, res: ExpressResponse) => {
   const { passcode, title, body, type } = req.body as { passcode?: string; title?: string; body?: string; type?: string };
   if (passcode !== ADMIN_PASSCODE) { res.status(401).json({ error: "Unauthorized" }); return; }
   if (!title || !body) { res.status(400).json({ error: "title and body required" }); return; }
@@ -264,7 +264,7 @@ router.post("/notifications/send", async (req: Request, res: Response) => {
 });
 
 // Admin: send a "going live" notification
-router.post("/notifications/send-live", async (req: Request, res: Response) => {
+router.post("/notifications/send-live", async (req: ExpressRequest, res: ExpressResponse) => {
   const { passcode, streamTitle } = req.body as { passcode?: string; streamTitle?: string };
   if (passcode !== ADMIN_PASSCODE) { res.status(401).json({ error: "Unauthorized" }); return; }
   await broadcastNotification({
