@@ -6,6 +6,11 @@ import { existsSync, readFileSync } from "fs";
 import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 
+type SpaResponse = Response & {
+  type: (contentType: string) => SpaResponse;
+  send: (body: string) => SpaResponse;
+};
+
 const app = express();
 
 const pinoMiddleware = (pinoHttp as unknown as any)({
@@ -51,7 +56,7 @@ if (process.env.NODE_ENV === "production" && !process.env.REPL_ID) {
   if (existsSync(staticDir)) {
     app.use(express.static(staticDir));
     // SPA fallback — send index.html for any unmatched route
-    app.get("*", (_req: Request, res: Response) => {
+    app.get("*", (_req: Request, res: SpaResponse) => {
       const indexPath = path.join(staticDir, "index.html");
       res.type("html");
       res.send(readFileSync(indexPath, "utf8"));
