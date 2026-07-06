@@ -1,5 +1,5 @@
-import app from "./app";
-import { logger } from "./lib/logger";
+import app from "./app.js";
+import { logger } from "./lib/logger.js";
 
 // Default to 8080 so the server works standalone (outside Replit).
 // In Replit, the workflow env injects PORT automatically.
