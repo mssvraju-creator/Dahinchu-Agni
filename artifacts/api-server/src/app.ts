@@ -1,4 +1,4 @@
-import express from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import path from "path";
@@ -51,7 +51,7 @@ if (process.env.NODE_ENV === "production" && !process.env.REPL_ID) {
   if (existsSync(staticDir)) {
     app.use(express.static(staticDir));
     // SPA fallback — send index.html for any unmatched route
-    app.get("*", (_req, res) => {
+    app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(staticDir, "index.html"));
     });
     logger.info({ staticDir }, "Serving website static files");
