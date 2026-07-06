@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, Request, Response } from "express";
 import { readFileSync, writeFileSync, existsSync } from "fs";
 import { join } from "path";
 import { broadcastNotification } from "./notifications.js";
@@ -147,12 +147,12 @@ function saveQuestions(q: BibleQuestion[]) {
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 // GET /bible/books
-router.get("/bible/books", (_req, res) => {
+router.get("/bible/books", (_req: Request, res: Response) => {
   res.json(BIBLE_BOOKS);
 });
 
 // GET /bible/chapter?lang=en|te&book=1&chapter=1
-router.get("/bible/chapter", async (req, res) => {
+router.get("/bible/chapter", async (req: Request, res: Response) => {
   const book = Math.max(1, Math.min(66, parseInt(req.query.book as string) || 1));
   const bookMeta = BIBLE_BOOKS[book - 1];
   const chapter = Math.max(1, Math.min(bookMeta.chapters, parseInt(req.query.chapter as string) || 1));
@@ -182,7 +182,7 @@ router.get("/bible/chapter", async (req, res) => {
 });
 
 // GET /bible/search?lang=en|te&q=love
-router.get("/bible/search", async (req, res) => {
+router.get("/bible/search", async (req: Request, res: Response) => {
   const q = ((req.query.q as string) || "").trim();
   const lang = (req.query.lang as string) === "te" ? "te" : "en";
 
@@ -226,7 +226,7 @@ router.get("/bible/search", async (req, res) => {
 });
 
 // POST /bible/questions
-router.post("/bible/questions", (req, res) => {
+router.post("/bible/questions", (req: Request, res: Response) => {
   const { name, email, question, verse } = req.body as Record<string, string>;
   if (!name?.trim() || !question?.trim()) {
     return res.status(400).json({ error: "Name and question are required" });
@@ -248,12 +248,12 @@ router.post("/bible/questions", (req, res) => {
 });
 
 // GET /bible/questions — admin
-router.get("/bible/questions", (_req, res) => {
+router.get("/bible/questions", (_req: Request, res: Response) => {
   res.json(loadQuestions());
 });
 
 // PATCH /bible/questions/:id — answer question (admin)
-router.patch("/bible/questions/:id", async (req, res) => {
+router.patch("/bible/questions/:id", async (req: Request, res: Response) => {
   const questions = loadQuestions();
   const idx = questions.findIndex((q) => q.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: "Not found" });
