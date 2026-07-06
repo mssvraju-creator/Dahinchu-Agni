@@ -1,3 +1,8 @@
+# ─── Optional Replit configuration ────────────────────────────────────────────
+# This file is only used when deploying on Replit. It is NOT required for
+# standalone development or production deployment (e.g. Render, VPS).
+# ─────────────────────────────────────────────────────────────────────────────
+
 modules = ["nodejs-24", "postgresql-16"]
 
 [deployment]
@@ -40,8 +45,7 @@ channel = "stable-25_05"
 
 [userenv]
 
-[userenv.shared]
-VAPID_PUBLIC_KEY = "BHZyeOdVhv-Zxegln3snXlljH9eSanMDI_9QthL0Yi-P1KFGX1pmmf2-aFAuIkbeYsUuH6O1lsJX494Hm3NPpng"
-VAPID_PRIVATE_KEY = "3aQDqRRWaxSzEXkl4mh9lcyinscqdNpVshVqcezuDpg"
-VAPID_SUBJECT = "mailto:info@dahinchuagni.com"
-VITE_VAPID_PUBLIC_KEY = "BHZyeOdVhv-Zxegln3snXlljH9eSanMDI_9QthL0Yi-P1KFGX1pmmf2-aFAuIkbeYsUuH6O1lsJX494Hm3NPpng"
+# NOTE: VAPID keys are intentionally not stored here for security reasons.
+# Set them via Replit Secrets (or your hosting platform's env var UI).
+# Required vars: VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT,
+#                VITE_VAPID_PUBLIC_KEY (for website build), EXPO_PUBLIC_API_URL (for mobile)

@@ -1,129 +1,110 @@
 # Dahinchu Agni Ministries
 
-Full digital presence for Dahinchu Agni Ministries — a React+Vite mobile-style web app and Express API for streaming content, events, giving, and prayer.
+Full digital presence for Dahinchu Agni Ministries — an Expo/React Native mobile app with an Express API backend for streaming content, events, giving, and prayer.
+
+## Project Structure
+
+```
+├── artifacts/
+│   ├── api-server/          Express 5 API server (backend)
+│   └── mobile/              Expo/React Native mobile app (Android + iOS)
+├── lib/
+│   ├── api-zod/             Shared Zod validation schemas
+│   ├── db/                  Drizzle ORM database schema
+│   ├── api-spec/            OpenAPI specification
+│   └── api-client-react/    Generated API client hooks
+├── scripts/                 Workspace scripts
+└── .env.example             Environment variable template
+```
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 8080)
-- `pnpm --filter @workspace/website run dev` — run the website (port 5173)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-
-## Standalone Setup (outside Replit)
-
-Run the app on any machine without needing Replit:
-
 ```bash
-# 1. Install dependencies
+# Install dependencies
 pnpm install
 
-# 2. Start the API server (terminal 1)
+# Start the API server (terminal 1)
 pnpm --filter @workspace/api-server run dev
 # → listens on http://localhost:8080/api
 
-# 3. Start the website (terminal 2)
-pnpm --filter @workspace/website run dev
-# → listens on http://localhost:5173
-# → /api calls are automatically proxied to localhost:8080
-
-# Optional env vars (all have defaults):
-# PORT=5173           website dev port
-# BASE_PATH=/         website base URL path
-# PORT=8080           API server port (set in api-server terminal)
+# Start the mobile app (terminal 2)
+pnpm --filter @workspace/mobile run dev
+# → Expo dev server on port 8081
 ```
 
-### Standalone Production Build
+## Production Build
 
 ```bash
-# Build everything
-VITE_VAPID_PUBLIC_KEY=<your_key> pnpm --filter @workspace/website run build  # → artifacts/website/dist/public/
-pnpm --filter @workspace/api-server run build                                 # → artifacts/api-server/dist/
+# Build the API server
+pnpm --filter @workspace/api-server run build
+# → artifacts/api-server/dist/index.mjs
 
-# Serve from one process (API server also serves the website)
-VAPID_PUBLIC_KEY=<your_key> VAPID_PRIVATE_KEY=<your_private_key> \
-  VAPID_SUBJECT=mailto:you@example.com NODE_ENV=production \
-  node artifacts/api-server/dist/index.mjs
-# → http://localhost:8080 serves both /api and the website (SPA)
+# Build the mobile app (static Expo Go deployment)
+pnpm --filter @workspace/mobile run build
+# → artifacts/mobile/static-build/
 ```
 
-> On Replit, the platform handles the reverse proxy and static file serving automatically — no extra config needed.
+## Mobile API URL Configuration
 
-### Push Notification Setup (Standalone)
+The mobile app connects to the backend API using the following priority:
 
-```bash
-# 1. Generate a VAPID key pair once for your deployment:
-node -e "const wp=require('./artifacts/api-server/node_modules/web-push'); \
-  const k=wp.generateVAPIDKeys(); \
-  console.log('PUBLIC='+k.publicKey+'\nPRIVATE='+k.privateKey)"
+1. **`EXPO_PUBLIC_API_URL`** env var — set this for production native builds
+2. **Expo debugger host** + `EXPO_PUBLIC_API_PORT` (default: 8080) — local dev
+3. **Empty string** — relative URLs (Expo Web)
 
-# 2. Set these environment variables (add to .env or your hosting platform):
-#    VAPID_PUBLIC_KEY    = <publicKey>     (server)
-#    VAPID_PRIVATE_KEY   = <privateKey>    (server — keep secret)
-#    VAPID_SUBJECT       = mailto:you@example.com
-#    VITE_VAPID_PUBLIC_KEY = <publicKey>   (website build — same as PUBLIC)
-#    EXPO_PUBLIC_API_URL = https://your-api.com  (mobile native builds)
-
-# 3. Rebuild the website so the new public key is baked in:
-VITE_VAPID_PUBLIC_KEY=<publicKey> pnpm --filter @workspace/website run build
-```
+## Required Environment Variables
 
 See `.env.example` at the repo root for a ready-to-copy template.
+
+### API Server
+- `PORT` — server port (default: 8080)
+- `VAPID_PUBLIC_KEY` — Web Push public key
+- `VAPID_PRIVATE_KEY` — Web Push private key
+- `VAPID_SUBJECT` — Web Push subject (mailto: or https:)
+
+### Mobile App
+- `EXPO_PUBLIC_API_URL` — deployed API server URL (for production builds)
+- `EXPO_PUBLIC_DOMAIN` — deployment domain (for static build serving)
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
-- Website: React 18 + Vite, Tailwind CSS v4, Shadcn UI, Wouter, TanStack Query
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM (optional — not required for YouTube/live features)
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Mobile: Expo SDK 54, React Native 0.81, expo-router
+- API: Express 5, Drizzle ORM, PostgreSQL
+- Validation: Zod
+- Push Notifications: web-push + Expo Notifications
 
-## Where things live
+## Where Things Live
 
-- `artifacts/website/src/pages/` — all app pages (home, media, give, prayer, events, about, more, contact, admin)
-- `artifacts/website/src/constants/ministry.ts` — ministry data (stats, social links, YouTube channel ID)
-- `artifacts/api-server/src/routes/youtube.ts` — live stream detection, video feed proxy
-- `artifacts/api-server/src/app.ts` — Express app, CORS, static serving in standalone production
-- `artifacts/website/vite.config.ts` — Vite config with `/api` proxy for standalone dev
+- `artifacts/api-server/src/routes/` — all API route handlers
+- `artifacts/mobile/app/` — all mobile app screens (Expo Router file-based routing)
+- `artifacts/mobile/constants/` — ministry data, colors, API config
+- `artifacts/mobile/hooks/` — custom React hooks
 - `lib/api-spec/` — OpenAPI spec (source of truth for API contracts)
-- `lib/api-client-react/` — generated TanStack Query hooks
 
-## Architecture decisions
+## Architecture Decisions
 
-- **YouTube channel ID** (`UChxz3kSq1sw0pLD3Pg-Vj7w`) is hardcoded in the website constants — only the Dahinchu Agni channel is ever queried.
-- **Live detection** uses three strategies in order: Piped (`duration === -1`), Invidious (`liveNow`), YouTube page scrape (redirect URL → videoId, then `" watching now"` for confirmation). The video list is also used as a fallback live signal on the media page.
-- **Reverse proxy**: In Replit, the shared proxy routes `/` → website, `/api` → API server. Standalone dev uses Vite's `server.proxy` to forward `/api` to localhost:8080.
-- **Static serving**: In Replit production, the platform serves `artifacts/website/dist/public` directly. Outside Replit, the API server (`NODE_ENV=production` + no `REPL_ID`) picks up the same directory and serves it with an SPA fallback.
-- **Dark mode**: CSS variables only. Never use `text-white`/`bg-black`/`border-white/10` globally — use semantic tokens (`text-foreground`, `border-border`, etc.). `text-white` is only allowed inside elements with an explicit dark background (like `bg-red-600`, `bg-secondary` which is navy).
+- **YouTube channel ID** (`UChxz3kSq1sw0pLD3Pg-Vj7w`) is hardcoded in mobile constants
+- **Live detection** uses three strategies in order: Piped, Invidious, YouTube page scrape
+- **Dark mode**: CSS variables only. Semantic tokens (`text-foreground`, `border-border`, etc.)
+- **Mobile-first layout** (max-width ~430px, centered on desktop for web preview)
 
-## Product
+## Push Notifications
 
-- **Home** — live banner, verse of the day, stats, quick-action buttons, latest videos, upcoming events
-- **Media** — live hero (full 16:9 thumbnail when live), video categories (All / Sermons / Worship / Teaching / Lives / Shorts)
-- **Give** — online giving with bank details and UPI
-- **Prayer** — prayer request submission
-- **Events** — church calendar with admin management
-- **About / More / Contact** — ministry info pages
-- **Admin** — passcode-protected settings panel
+```bash
+# Generate a VAPID key pair once for your deployment:
+node -e "const wp=require('./artifacts/api-server/node_modules/web-push'); \
+  const k=wp.generateVAPIDKeys(); \
+  console.log('PUBLIC='+k.publicKey+'\nPRIVATE='+k.privateKey)"
 
-## User preferences
+# Set env vars for the API server:
+#   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
+# Set EXPO_PUBLIC_API_URL for the mobile app (production builds)
+```
+
+## User Preferences
 
 - Brand: primary orange `#E84C1E` / `#F97316`, secondary navy `#0B2A7A`
 - Tagline: "Consuming Fire — Igniting Nations"
-- YouTube channel handle: `@Dahinchuagni`
-- Admin passcode: stored in AdminContext (not in env)
-- Mobile-first layout (max-width ~430 px, centered on desktop)
-
-## Gotchas
-
-- Always run `pnpm --filter @workspace/api-spec run codegen` after changing the OpenAPI spec.
-- The Vite config is an **async** `defineConfig` call (needed for dynamic Replit plugin imports) — don't convert it to sync.
-- `@replit/vite-plugin-*` packages are optional. They are guarded by `REPL_ID` env var and are skipped entirely outside Replit.
-- Never run `pnpm dev` at workspace root — individual artifact workflows inject `PORT` and `BASE_PATH`.
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- YouTube channel: `@Dahinchuagni`
+- Admin passcode: stored in app context (not in env — hardcoded `DAFIRE94`)
