@@ -21,6 +21,10 @@
       }
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0B2A7A"
+      },
       "package": "org.dahinchuagni.app",
       "googleServicesFile": "./google-services.json",
       "permissions": ["RECEIVE_BOOT_COMPLETED", "VIBRATE", "WAKE_LOCK"]
@@ -38,9 +42,19 @@
       "expo-font",
       "expo-web-browser",
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 36,
+            "targetSdkVersion": 36,
+            "minSdkVersion": 24,
+            "kotlinVersion": "2.0.21"
+          }
+        }
+      ],
+      [
         "expo-notifications",
         {
-          "icon": "./assets/images/icon.png",
           "color": "#E84C1E",
           "defaultChannel": "dahinchu-agni",
           "sounds": []
@@ -49,7 +63,7 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "replace-with-your-eas-project-id"
+        "projectId": "7b134aa8-9419-4b02-9aee-b226f54e2a48"
       }
     },
     "experiments": {

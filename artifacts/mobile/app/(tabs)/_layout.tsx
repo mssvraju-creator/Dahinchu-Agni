@@ -134,8 +134,16 @@ function ClassicTabLayout() {
   );
 }
 
+function isLiquidGlassSupported(): boolean {
+  try {
+    return isLiquidGlassAvailable();
+  } catch {
+    return false;
+  }
+}
+
 export default function TabLayout() {
-  if (isLiquidGlassAvailable()) {
+  if (isLiquidGlassSupported()) {
     return <NativeTabLayout />;
   }
   return <ClassicTabLayout />;

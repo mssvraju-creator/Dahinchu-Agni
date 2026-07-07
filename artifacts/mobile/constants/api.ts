@@ -1,29 +1,39 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-/**
- * Base API URL for native (non-web) environments.
- *
- * Priority:
- * 1. EXPO_PUBLIC_API_URL env var — set this in production/EAS builds (e.g. https://your-api.com)
- * 2. EXPO_PUBLIC_API_PORT env var — port override for the API server (default: 8080)
- * 3. Derived from Expo's debugger host (works in local dev via Expo Go / dev build)
- * 4. Empty string — relative URLs (works when served alongside API or via proxy)
- */
+let _resolved: string | null = null;
+
 function resolveApiUrl(): string {
-  if (Platform.OS === "web") return "";
+  if (_resolved) return _resolved;
 
-  const explicit = process.env.EXPO_PUBLIC_API_URL;
-  if (explicit) return explicit.replace(/\/$/, "");
+  if (Platform.OS === "web") {
+    _resolved = "";
+    return _resolved;
+  }
 
-  const hostUri = Constants.expoConfig?.hostUri; // e.g. "192.168.1.5:8081"
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl) {
+    _resolved = envUrl.replace(/\/$/, "");
+    return _resolved;
+  }
+
+  const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(":")[0];
     const apiPort = process.env.EXPO_PUBLIC_API_PORT || "8080";
-    return `http://${host}:${apiPort}`;
+    _resolved = `http://${host}:${apiPort}`;
+    return _resolved;
   }
 
-  return "";
+  if (__DEV__) {
+    console.warn(
+      "[API] EXPO_PUBLIC_API_URL not set. API calls will use relative URLs. " +
+        "Set EXPO_PUBLIC_API_URL in your EAS build secrets or .env for production."
+    );
+  }
+
+  _resolved = "";
+  return _resolved;
 }
 
 export const API_URL = resolveApiUrl();
