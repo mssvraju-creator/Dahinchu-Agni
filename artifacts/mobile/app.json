@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Dahinchu Agni",
-    "slug": "mobile",
+    "slug": "dahinchu-agni",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
