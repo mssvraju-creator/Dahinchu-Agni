@@ -1,25 +1,10 @@
 import { Router, Request as ExpressRequest, Response as ExpressResponse } from "express";
+import { detectLive, tryPiped, tryInvidious, CHANNEL_ID } from "../lib/live-detection.js";
+import { fetchVideos as fetchYoutubeApiVideos } from "../lib/youtube-api.js";
 
 const router = Router();
 
-const DEFAULT_CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
-
-// ── External API instances ────────────────────────────────────────────────────
-const PIPED_INSTANCES = [
-  "https://pipedapi.kavin.rocks",
-  "https://pipedapi.adminforge.de",
-  "https://pipedapi.leptons.xyz",
-  "https://api.piped.projectsegfault.com",
-  "https://pipedapi.tokhmi.xyz",
-];
-
-const INVIDIOUS_INSTANCES = [
-  "https://inv.tux.pizza",
-  "https://invidious.nerdvpn.de",
-  "https://invidious.io.lol",
-  "https://iv.datura.network",
-  "https://invidious.privacyredirect.com",
-];
+const DEFAULT_CHANNEL_ID = CHANNEL_ID;
 
 // ── In-memory cache ───────────────────────────────────────────────────────────
 const cache = new Map<string, { data: any; expiresAt: number }>();
@@ -32,49 +17,7 @@ function setCache(key: string, data: any, ttlMs: number) {
   cache.set(key, { data, expiresAt: Date.now() + ttlMs });
 }
 
-// Nextpage tokens for Piped pagination (page N stores token for page N+1)
-const nextTokens = new Map<string, string>();
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function formatDuration(secs: number): string | null {
-  if (!secs || secs <= 0) return null;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = secs % 60;
-  return h > 0
-    ? `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`
-    : `${m}:${String(s).padStart(2, "0")}`;
-}
-
-// Race all Piped instances — return first JSON OK response
-async function tryPiped(path: string): Promise<any | null> {
-  const results = await Promise.all(
-    PIPED_INSTANCES.map((base) =>
-      fetch(`${base}${path}`, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(6000),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null)
-    )
-  );
-  return results.find((r) => r !== null) ?? null;
-}
-
-// Race all Invidious instances — return first JSON OK response
-async function tryInvidious(path: string): Promise<any | null> {
-  const results = await Promise.all(
-    INVIDIOUS_INSTANCES.map((base) =>
-      fetch(`${base}${path}`, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(6000),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .catch(() => null)
-    )
-  );
-  return results.find((r) => r !== null) ?? null;
-}
 
 // Map Piped stream → VideoItem
 function mapPiped(v: any): any {
@@ -85,12 +28,14 @@ function mapPiped(v: any): any {
   return {
     id,
     title: v.title || "",
-    publishedAt: v.uploaded ? new Date(v.uploaded).toISOString() : new Date().toISOString(),
+    published: v.uploaded ? new Date(v.uploaded).toISOString() : new Date().toISOString(),
     thumbnailUrl: v.thumbnail || `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-    duration: isLive ? null : formatDuration(dur),
+    videoUrl: `https://www.youtube.com/watch?v=${id}`,
+    channelName: "Dahinchu Agni Ministries",
     isLive,
     isShort,
-    viewCount: v.views != null ? String(v.views) : null,
+    durationSeconds: isLive ? null : dur,
+    viewCount: v.views != null ? v.views : null,
   };
 }
 
@@ -108,12 +53,14 @@ function mapInvidious(v: any): any {
   return {
     id: v.videoId,
     title: v.title || "",
-    publishedAt: new Date((v.published || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
+    published: new Date((v.published || Math.floor(Date.now() / 1000)) * 1000).toISOString(),
     thumbnailUrl: thumb,
-    duration: formatDuration(dur),
+    videoUrl: `https://www.youtube.com/watch?v=${v.videoId}`,
+    channelName: "Dahinchu Agni Ministries",
     isLive,
     isShort: !isLive && dur > 0 && dur <= 65,
-    viewCount: v.viewCount ? String(v.viewCount) : null,
+    durationSeconds: dur || null,
+    viewCount: v.viewCount ? v.viewCount : null,
   };
 }
 
@@ -138,135 +85,19 @@ async function fetchRss(channelId: string): Promise<any[]> {
     if (!id || !title) return [];
     const tl = title.toLowerCase();
     const isLive = tl.includes("live") || tl.includes("stream") || tl.includes("broadcast");
-    return [{ id, title, publishedAt, thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, duration: null, isLive, isShort: false, viewCount: null }];
+    return [{
+      id, title,
+      published: publishedAt,
+      thumbnailUrl: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+      videoUrl: `https://www.youtube.com/watch?v=${id}`,
+      channelName: "Dahinchu Agni Ministries",
+      isLive, isShort: false, durationSeconds: null, viewCount: null,
+    }];
   });
-}
-
-// Known YouTube UI strings to skip when extracting video title
-const YT_UI_STRINGS = new Set([
-  "SUBSCRIBE", "SUBSCRIBED", "UNSUBSCRIBE", "Unsubscribe", "Subscribe",
-  "Cancel", "Report", "Share", "Save", "Download", "Clip", "Thanks",
-  "Add to queue", "Like", "Dislike",
-]);
-
-// Scrape YouTube channel/live page for live indicator.
-// Key insight: when a channel is actively live, YouTube redirects
-// /channel/{channelId}/live  →  /watch?v={videoId}
-// The redirect URL gives us the channel's OWN live video ID reliably.
-async function scrapeYtLive(channelId: string): Promise<{ isLive: boolean; videoId: string | null; title: string | null } | null> {
-  try {
-    const r = await fetch(`https://www.youtube.com/channel/${channelId}/live`, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
-      },
-      signal: AbortSignal.timeout(9000),
-      redirect: "follow",
-    });
-    if (!r.ok) return null;
-    const html = await r.text();
-
-    // " watching now" is the ONLY reliable live indicator — do NOT use "isLive":true
-    // or "isLiveContent":true because those appear in recommendation cards too
-    const hasWatching = html.includes(' watching now"');
-
-    // Primary: get video ID from the redirect URL — this is the channel's own video, never a recommendation
-    const finalUrl = r.url ?? "";
-    const redirectVideoId = finalUrl.match(/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/)?.[1] ?? null;
-
-    if (!hasWatching) return { isLive: false, videoId: null, title: null };
-
-    // Use the redirect-derived ID if available; otherwise scan the canonical videoId
-    // tag (appears before recommendation cards in the rendered HTML)
-    const canonicalMatch = html.match(/"canonical":"https:\/\/www\.youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})"/);
-    const videoId = redirectVideoId ?? canonicalMatch?.[1] ?? null;
-
-    // 1. Best: extract from <title> tag — format is "{Video Title} - YouTube"
-    const htmlTitleRaw = html.match(/<title>([^<]+)<\/title>/)?.[1] ?? "";
-    const htmlTitle = htmlTitleRaw
-      .replace(/ - YouTube$/i, "")
-      .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-      .trim();
-    // Only use <title> if it looks like a video title (has more than channel name length)
-    const fromHtmlTitle = htmlTitle.length > 8 && !/^@?\w+$/.test(htmlTitle) ? htmlTitle : null;
-
-    // 2. Fallback: scan "text":"..." JSON fields, filtering browser/UI noise
-    const allTextMatches = [...html.matchAll(/"text":"([^"]{5,200})"/g)].map((m) => m[1]);
-    const UI_NOISE = [
-      "microphone", "browser settings", "search by voice", "allow access",
-      "voice search", "camera access", "location", "notification",
-    ];
-    const fromJson =
-      allTextMatches
-        .filter(
-          (t) =>
-            !YT_UI_STRINGS.has(t) &&
-            !t.includes(" watching now") &&
-            !/playlist/i.test(t) &&
-            !/sign in/i.test(t) &&
-            !/again later/i.test(t) &&
-            !/unsubscribe from/i.test(t) &&
-            !UI_NOISE.some((n) => t.toLowerCase().includes(n))
-        )
-        .sort((a, b) => b.length - a.length)[0] ?? null;
-
-    const title = fromHtmlTitle ?? fromJson;
-
-    return { isLive: true, videoId, title };
-  } catch {
-    return null;
-  }
 }
 
 // ── Race-based live detection ──────────────────────────────────────────────────
-// Returns as soon as ANY strategy confirms live; doesn't wait for slow ones.
-// Only channel-authoritative sources used — no RSS title-keyword guessing.
-function detectLive(channelId: string): Promise<{ isLive: boolean; videoId?: string | null; title?: string | null }> {
-  return new Promise((resolve) => {
-    let done = false;
-    let completed = 0;
-    const TOTAL = 3;
-
-    function onResult(r: { isLive: boolean; videoId?: string | null; title?: string | null } | null) {
-      completed++;
-      if (!done && r?.isLive) {
-        done = true;
-        resolve(r);
-        return;
-      }
-      if (completed >= TOTAL && !done) {
-        done = true;
-        resolve({ isLive: false });
-      }
-    }
-
-    // Strategy 1: Piped — live stream has duration === -1 (channel-specific, reliable)
-    tryPiped(`/channel/${channelId}`)
-      .then((data) => {
-        if (!data?.relatedStreams) { onResult(null); return; }
-        const lv = (data.relatedStreams as any[]).find((v) => v.type === "stream" && v.duration === -1);
-        if (!lv) { onResult(null); return; }
-        const id = (lv.url || "").replace(/^\/watch\?v=/, "");
-        onResult({ isLive: true, videoId: id || null, title: lv.title ?? null });
-      })
-      .catch(() => onResult(null));
-
-    // Strategy 2: Invidious streams endpoint (channel-specific, reliable)
-    tryInvidious(`/api/v1/channels/${channelId}/streams`)
-      .then((data) => {
-        const lv = (data?.videos as any[] | undefined)?.find((v: any) => v.liveNow);
-        onResult(lv ? { isLive: true, videoId: lv.videoId ?? null, title: lv.title ?? null } : null);
-      })
-      .catch(() => onResult(null));
-
-    // Strategy 3: Scrape YouTube /channel/live — videoId from redirect URL (never a recommendation)
-    scrapeYtLive(channelId).then(onResult).catch(() => onResult(null));
-
-    // Hard timeout 10 s
-    setTimeout(() => { if (!done) { done = true; resolve({ isLive: false }); } }, 10_000);
-  });
-}
+// Shared with notifications via ../lib/live-detection.js
 
 // ── RSS proxy ─────────────────────────────────────────────────────────────────
 router.get("/youtube/feed", async (req: ExpressRequest, res: ExpressResponse) => {
@@ -289,8 +120,7 @@ router.get("/youtube/feed", async (req: ExpressRequest, res: ExpressResponse) =>
 // ── GET /youtube/videos ───────────────────────────────────────────────────────
 router.get("/youtube/videos", async (req: ExpressRequest, res: ExpressResponse) => {
   const channelId = (req.query.channelId as string) || DEFAULT_CHANNEL_ID;
-  const page = Math.max(1, parseInt(req.query.page as string) || 1);
-  const cacheKey = `videos:${channelId}:${page}`;
+  const cacheKey = `videos:${channelId}`;
 
   const cached = getCache<any>(cacheKey);
   if (cached) {
@@ -300,76 +130,53 @@ router.get("/youtube/videos", async (req: ExpressRequest, res: ExpressResponse) 
   }
 
   let sent = false;
-  let resolveDone!: () => void;
-  const done = new Promise<void>((r) => { resolveDone = r; });
 
-  function send(videos: any[], hasMore: boolean) {
+  function send(videos: any[]) {
     if (sent || res.headersSent) return;
     sent = true;
-    const payload = { videos, page, hasMore };
-    setCache(cacheKey, payload, page === 1 ? 90_000 : 300_000);
+    const payload = { videos, hasMore: false };
+    setCache(cacheKey, payload, 90_000);
     res.setHeader("Cache-Control", "public, max-age=60");
     res.json(payload);
-    resolveDone();
   }
 
-  const fallback = setTimeout(() => send([], false), 10_000);
+  const fallback = setTimeout(() => send([]), 10_000);
 
-  if (page === 1) {
-    // RSS: fast first response (~1s)
-    fetchRss(channelId)
-      .then((videos) => { if (videos.length) send(videos, true); })
-      .catch(() => {});
-
-    // Piped: rich metadata (duration, views, isLive, isShort)
-    tryPiped(`/channel/${channelId}`)
-      .then((data) => {
-        if (!data?.relatedStreams?.length) return;
-        const videos = (data.relatedStreams as any[])
-          .filter((v) => v.type === "stream")
-          .map(mapPiped)
-          .filter((v) => v.id);
-        if (data.nextpage) nextTokens.set(`${channelId}:2`, data.nextpage);
-        if (videos.length) send(videos, !!data.nextpage);
-      })
-      .catch(() => {});
-
-    // Invidious: fallback enrichment if Piped fails
-    tryInvidious(`/api/v1/channels/${channelId}/videos?page=1&sort_by=newest`)
-      .then((data) => {
-        if (!data?.videos?.length) return;
-        const videos = (data.videos as any[]).map(mapInvidious);
-        send(videos, videos.length >= 25);
-      })
-      .catch(() => {});
-  } else {
-    // Pages 2+: use stored Piped nextpage token if available
-    const token = nextTokens.get(`${channelId}:${page}`);
-    if (token) {
-      tryPiped(`/nextpage/channel/${channelId}?nextpage=${encodeURIComponent(token)}`)
-        .then((data) => {
-          if (!data?.relatedStreams?.length) return;
-          const videos = (data.relatedStreams as any[])
-            .filter((v) => v.type === "stream")
-            .map(mapPiped)
-            .filter((v) => v.id);
-          if (data.nextpage) nextTokens.set(`${channelId}:${page + 1}`, data.nextpage);
-          send(videos, !!data.nextpage);
-        })
-        .catch(() => {});
-    }
-
-    // Always try Invidious for page 2+ as parallel attempt
-    tryInvidious(`/api/v1/channels/${channelId}/videos?page=${page}&sort_by=newest`)
-      .then((data) => {
-        if (!data?.videos?.length) return;
-        const videos = (data.videos as any[]).map(mapInvidious);
-        send(videos, videos.length >= 25);
-      })
-      .catch(() => {});
+  // Strategy 1: YouTube Data API v3 (most reliable, up to 50 videos)
+  const apiVideos = await fetchYoutubeApiVideos(channelId, 50);
+  if (apiVideos.length > 0) {
+    clearTimeout(fallback);
+    send(apiVideos);
+    return;
   }
 
-  await done;
+  // Strategy 2: Piped (rich metadata, ~15 videos)
+  tryPiped(`/channel/${channelId}`)
+    .then((data) => {
+      if (!data?.relatedStreams?.length) return;
+      const videos = (data.relatedStreams as any[])
+        .filter((v: any) => v.type === "stream")
+        .map(mapPiped)
+        .filter((v: any) => v.id);
+      if (videos.length) send(videos);
+    })
+    .catch(() => {});
+
+  // Strategy 3: Invidious (fallback)
+  tryInvidious(`/api/v1/channels/${channelId}/videos?page=1&sort_by=newest`)
+    .then((data) => {
+      if (!data?.videos?.length) return;
+      const videos = (data.videos as any[]).map(mapInvidious);
+      send(videos);
+    })
+    .catch(() => {});
+
+  // Strategy 4: RSS (fast, no metadata)
+  fetchRss(channelId)
+    .then((videos) => { if (videos.length) send(videos); })
+    .catch(() => {});
+
+  await new Promise((r) => { const check = setInterval(() => { if (sent) { clearInterval(check); r(undefined); } }, 100); });
   clearTimeout(fallback);
 });
 
@@ -404,7 +211,6 @@ router.post("/youtube/cache/clear", (req: ExpressRequest, res: ExpressResponse) 
   const { passcode } = req.body as { passcode?: string };
   if (passcode !== "DAFIRE94") { res.status(401).json({ error: "Unauthorized" }); return; }
   cache.clear();
-  nextTokens.clear();
   res.json({ ok: true });
 });
 

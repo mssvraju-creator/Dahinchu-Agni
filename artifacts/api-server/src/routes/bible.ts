@@ -125,6 +125,7 @@ type BibleQuestion = {
   email: string;
   question: string;
   verse: string;
+  verseText?: string;
   answered: boolean;
   answer?: string;
   answeredAt?: string;
@@ -165,7 +166,7 @@ router.get("/bible/chapter", async (req: ExpressRequest, res: ExpressResponse) =
       const chapterData = bookData?.Chapter[chapter - 1];
       if (!chapterData) return res.status(404).json({ error: "Not found" });
       return res.json(
-        chapterData.Verse.map((v, i) => ({ verse: i + 1, text: v.Verse }))
+        chapterData.Verse.map((v, i) => ({ verse: i + 1, text: stripBollsTags(v.Verse) }))
       );
     } else {
       const resp = await fetch(
@@ -195,7 +196,7 @@ router.get("/bible/search", async (req: ExpressRequest, res: ExpressResponse) =>
       outer: for (let b = 0; b < bible.Book.length; b++) {
         for (let c = 0; c < bible.Book[b].Chapter.length; c++) {
           for (let v = 0; v < bible.Book[b].Chapter[c].Verse.length; v++) {
-            const text = bible.Book[b].Chapter[c].Verse[v].Verse;
+            const text = stripBollsTags(bible.Book[b].Chapter[c].Verse[v].Verse);
             if (text.includes(q)) {
               results.push({ book: b + 1, chapter: c + 1, verse: v + 1, text });
               if (results.length >= 30) break outer;
@@ -227,7 +228,7 @@ router.get("/bible/search", async (req: ExpressRequest, res: ExpressResponse) =>
 
 // POST /bible/questions
 router.post("/bible/questions", (req: ExpressRequest, res: ExpressResponse) => {
-  const { name, email, question, verse } = req.body as Record<string, string>;
+  const { name, email, question, verse, verseText } = req.body as Record<string, string>;
   if (!name?.trim() || !question?.trim()) {
     return res.status(400).json({ error: "Name and question are required" });
   }
@@ -238,6 +239,7 @@ router.post("/bible/questions", (req: ExpressRequest, res: ExpressResponse) => {
     email: (email || "").trim(),
     question: question.trim(),
     verse: (verse || "").trim(),
+    verseText: (verseText || "").trim(),
     answered: false,
     createdAt: new Date().toISOString(),
   };
@@ -267,13 +269,13 @@ router.patch("/bible/questions/:id", async (req: ExpressRequest, res: ExpressRes
   saveQuestions(questions);
 
   // Send push notification to all subscribers
-  const q = questions[idx];
-  const verseRef = q.verse ? ` (${q.verse})` : "";
-  await broadcastNotification({
-    title: "📖 Your Bible Question Was Answered!",
-    body: `Staff replied to your question${verseRef}: "${q.question.slice(0, 80)}…"`,
-    data: { type: "bible-answer", questionId: q.id },
-  }).catch(() => {});
+    const q = questions[idx];
+    const verseRef = q.verse ? ` (${q.verse})` : "";
+    await broadcastNotification({
+      title: "Your Bible Question Was Answered!",
+      body: `Staff replied to your question${verseRef}: "${q.question.slice(0, 80)}…"`,
+      data: { type: "bible-answer", questionId: q.id },
+    }).catch(() => {});
 
   return res.json({ ok: true });
 });

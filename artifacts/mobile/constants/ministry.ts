@@ -76,8 +76,8 @@ Today, the ministry operates 17 distinct ministry departments, including the ren
 export const ADMIN_PASSCODE = "DAFIRE94";
 
 export const BIBLE_VERSES = [
-  { text: "Give, and it will be given to you. A good measure, pressed down, shaken together and running over, will be poured into your lap.", ref: "Luke 6:38" },
-  { text: "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.", ref: "Jeremiah 29:11" },
+  { text: "Give, and it will be given to you. A good measure, pressed down, shaken together and running over, will be poured into your lap.", teluguText: "ఇయ్యండి, అప్పుడు మీకు ఇయ్యబడును. కొలత నిండా అదిమి, కదలించి, పొంగి పారునట్లుగా మీ ఒడిలో వేయబడును.", ref: "Luke 6:38" },
+  { text: "For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.", teluguText: "నేను మీ కొరకు ఉద్దేశించిన సంకల్పములు నాకు తెలియును. అవి కీడుకావు మేలే, మీకు భావి కాలమందు నిరీక్షణ కలుగజేయు సంకల్పములు.", ref: "Jeremiah 29:11" },
   { text: "Call to me and I will answer you and tell you great and unsearchable things you do not know.", ref: "Jeremiah 33:3" },
   { text: "I can do all this through him who gives me strength.", ref: "Philippians 4:13" },
   { text: "Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God.", ref: "Philippians 4:6" },
@@ -88,7 +88,7 @@ export const BIBLE_VERSES = [
   { text: "Jesus said to him, I am the way, and the truth, and the life.", ref: "John 14:6" },
   { text: "If my people, who are called by my name, will humble themselves and pray… I will hear from heaven.", ref: "2 Chronicles 7:14" },
   { text: "Blessed are those who mourn, for they will be comforted.", ref: "Matthew 5:4" },
-  { text: "The Lord is my shepherd, I lack nothing.", ref: "Psalm 23:1" },
+  { text: "The Lord is my shepherd, I lack nothing.", teluguText: "యెహోవా నా కాపరి, నాకు ఏమియు లోపము ఉండదు.", ref: "Psalm 23:1" },
 ];
 
 export interface MinistryEvent {

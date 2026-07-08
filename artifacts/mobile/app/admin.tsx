@@ -25,7 +25,7 @@ import { usePrayer } from "@/context/PrayerContext";
 import { MinistryEvent, MinistryResource } from "@/constants/ministry";
 import { KeyboardAwareScrollViewCompat } from "@/components/KeyboardAwareScrollViewCompat";
 
-type AdminTab = "events" | "resources" | "prayers" | "notifications" | "settings";
+type AdminTab = "events" | "resources" | "prayers" | "questions" | "notifications" | "settings";
 
 export default function AdminScreen() {
   const colors = useColors();
@@ -64,6 +64,13 @@ export default function AdminScreen() {
   const [notifSending, setNotifSending] = useState(false);
   const [notifStats, setNotifStats] = useState<{ subscribers: number } | null>(null);
 
+  // Questions
+  const [questions, setQuestions] = useState<any[]>([]);
+  const [questionsLoading, setQuestionsLoading] = useState(false);
+  const [answerModalIndex, setAnswerModalIndex] = useState<number | null>(null);
+  const [answerText, setAnswerText] = useState("");
+  const [answerSending, setAnswerSending] = useState(false);
+
   React.useEffect(() => {
     if (isAdmin) {
       fetch(`${API_URL}/api/notifications/stats`)
@@ -72,6 +79,12 @@ export default function AdminScreen() {
         .catch(() => {});
     }
   }, [isAdmin]);
+
+  React.useEffect(() => {
+    if (isAdmin && tab === "questions") {
+      fetchQuestions();
+    }
+  }, [isAdmin, tab]);
 
   const topPadding = Platform.OS === "web" ? 52 : insets.top;
   const bottomPadding = Platform.OS === "web" ? 34 : 0;
@@ -149,6 +162,40 @@ export default function AdminScreen() {
     Alert.alert("Saved", "Settings updated successfully.");
   }
 
+  async function fetchQuestions() {
+    setQuestionsLoading(true);
+    try {
+      const r = await fetch(`${API_URL}/api/bible/questions`);
+      const data = await r.json();
+      setQuestions(Array.isArray(data) ? data : []);
+    } catch {
+      setQuestions([]);
+    }
+    setQuestionsLoading(false);
+  }
+
+  async function handleAnswer(index: number) {
+    if (!answerText.trim()) return;
+    const q = questions[index];
+    if (!q) return;
+    setAnswerSending(true);
+    try {
+      const r = await fetch(`${API_URL}/api/bible/questions/${q.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: answerText.trim() }),
+      });
+      if (!r.ok) throw new Error("Failed");
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      setAnswerModalIndex(null);
+      setAnswerText("");
+      fetchQuestions();
+    } catch {
+      Alert.alert("Error", "Could not submit answer.");
+    }
+    setAnswerSending(false);
+  }
+
   if (!isAdmin) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topPadding }]}>
@@ -217,6 +264,7 @@ export default function AdminScreen() {
     { key: "events", label: "Events", icon: "calendar" },
     { key: "resources", label: "Resources", icon: "book-open" },
     { key: "prayers", label: "Prayers", icon: "heart" },
+    { key: "questions", label: "Bible Q", icon: "help-circle" },
     { key: "notifications", label: "Notifs", icon: "bell" },
     { key: "settings", label: "Settings", icon: "settings" },
   ];
@@ -363,6 +411,137 @@ export default function AdminScreen() {
                 </View>
               ))
             )}
+          </View>
+        )}
+
+        {/* ===== QUESTIONS TAB ===== */}
+        {tab === "questions" && (
+          <View style={{ gap: 10 }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <Text style={[styles.listCount, { color: colors.mutedForeground }]}>
+                {questions.length} question{questions.length !== 1 ? "s" : ""}
+              </Text>
+              <TouchableOpacity onPress={fetchQuestions}>
+                <Feather name="refresh-cw" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {questionsLoading ? (
+              <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Loading questions...</Text>
+              </View>
+            ) : questions.length === 0 ? (
+              <View style={[styles.emptyState, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                <Feather name="help-circle" size={28} color={colors.mutedForeground} />
+                <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No questions yet</Text>
+              </View>
+            ) : (
+              questions.map((q: any, i: number) => (
+                <View key={q.id} style={[styles.listItem, { backgroundColor: colors.card, borderColor: colors.border, flexDirection: "column", alignItems: "stretch" }]}>
+                  <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 10 }}>
+                    <View style={[styles.listItemDot, { backgroundColor: q.answered ? "#059669" : "#E84C1E", marginTop: 4 }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.listItemTitle, { color: colors.foreground }]}>
+                        {q.name || "Anonymous"}
+                      </Text>
+                      <Text style={[styles.listItemSub, { color: colors.foreground, marginTop: 6, lineHeight: 20 }]}>
+                        {q.question}
+                      </Text>
+                      {q.verse ? (
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6 }}>
+                          <Feather name="book-open" size={12} color="#E84C1E" />
+                          <Text style={{ fontSize: 12, color: "#E84C1E", fontFamily: "Inter_500Medium" }}>
+                            {q.verse}
+                          </Text>
+                        </View>
+                      ) : null}
+                      {q.verseText ? (
+                        <Text style={{ fontSize: 12, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic", marginTop: 4, lineHeight: 18 }}>
+                          "{q.verseText}"
+                        </Text>
+                      ) : null}
+                      <Text style={{ fontSize: 11, color: colors.mutedForeground, fontFamily: "Inter_400Regular", marginTop: 6 }}>
+                        {new Date(q.createdAt).toLocaleDateString()}
+                      </Text>
+                      {q.answered && q.answer ? (
+                        <View style={{ backgroundColor: "#F0FDF4", borderRadius: 8, padding: 10, marginTop: 8 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "600", color: "#059669", fontFamily: "Inter_600SemiBold", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                            Answer
+                          </Text>
+                          <Text style={{ fontSize: 13, color: "#166534", fontFamily: "Inter_400Regular", marginTop: 4, lineHeight: 20 }}>
+                            {q.answer}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </View>
+                  {!q.answered ? (
+                    <TouchableOpacity
+                      style={[styles.addBtn, { backgroundColor: "#059669", marginTop: 10 }]}
+                      onPress={() => { setAnswerModalIndex(i); setAnswerText(""); }}
+                    >
+                      <Feather name="message-square" size={14} color="#FFFFFF" />
+                      <Text style={styles.addBtnText}>Answer</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+              ))
+            )}
+
+            {/* Answer Modal */}
+            <Modal visible={answerModalIndex !== null} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setAnswerModalIndex(null)}>
+              <View style={[styles.modal, { backgroundColor: colors.background }]}>
+                <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+                  <Text style={[styles.modalTitle, { color: colors.foreground }]}>Answer Question</Text>
+                  <TouchableOpacity onPress={() => setAnswerModalIndex(null)}>
+                    <Feather name="x" size={22} color={colors.foreground} />
+                  </TouchableOpacity>
+                </View>
+                {answerModalIndex !== null && questions[answerModalIndex] ? (
+                  <View style={{ padding: 20, gap: 14 }}>
+                    <View style={[styles.settingGroup, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <Text style={[styles.settingGroupTitle, { color: colors.foreground }]}>
+                        {questions[answerModalIndex].name || "Anonymous"}
+                      </Text>
+                      <Text style={{ fontSize: 14, color: colors.foreground, fontFamily: "Inter_400Regular", lineHeight: 22 }}>
+                        {questions[answerModalIndex].question}
+                      </Text>
+                      {questions[answerModalIndex].verse ? (
+                        <Text style={{ fontSize: 12, color: "#E84C1E", fontFamily: "Inter_500Medium", marginTop: 4 }}>
+                          {questions[answerModalIndex].verse}
+                        </Text>
+                      ) : null}
+                      {questions[answerModalIndex].verseText ? (
+                        <Text style={{ fontSize: 13, color: colors.mutedForeground, fontFamily: "Inter_400Regular", fontStyle: "italic", marginTop: 6, lineHeight: 20 }}>
+                          "{questions[answerModalIndex].verseText}"
+                        </Text>
+                      ) : null}
+                    </View>
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: colors.foreground, fontFamily: "Inter_600SemiBold" }}>
+                      Your Answer
+                    </Text>
+                    <TextInput
+                      style={[styles.settingTextarea, { color: colors.foreground, borderColor: colors.border, backgroundColor: colors.card }]}
+                      placeholder="Type your answer..."
+                      placeholderTextColor={colors.mutedForeground}
+                      value={answerText}
+                      onChangeText={setAnswerText}
+                      multiline
+                      numberOfLines={5}
+                      textAlignVertical="top"
+                    />
+                    <TouchableOpacity
+                      style={[styles.addBtn, { backgroundColor: "#059669", opacity: (!answerText.trim() || answerSending) ? 0.6 : 1 }]}
+                      disabled={!answerText.trim() || answerSending}
+                      onPress={() => handleAnswer(answerModalIndex!)}
+                    >
+                      <Feather name="send" size={14} color="#FFFFFF" />
+                      <Text style={styles.addBtnText}>{answerSending ? "Sending..." : "Send Answer & Notify"}</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+              </View>
+            </Modal>
           </View>
         )}
 

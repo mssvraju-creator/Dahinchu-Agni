@@ -1,35 +1,28 @@
 import { Platform } from "react-native";
 import Constants from "expo-constants";
 
-let _resolved: string | null = null;
+let _resolved: string | undefined;
 
-function resolveApiUrl(): string {
-  if (_resolved) return _resolved;
+export function resolveApiUrl(): string {
+  if (_resolved !== undefined) return _resolved;
 
   if (Platform.OS === "web") {
     _resolved = "";
     return _resolved;
   }
 
-  const envUrl = process.env.EXPO_PUBLIC_API_URL;
-  if (envUrl) {
-    _resolved = envUrl.replace(/\/$/, "");
+  // EXPO_PUBLIC_API_URL explicitly set (even to "") means use that value
+  if ("EXPO_PUBLIC_API_URL" in process.env) {
+    _resolved = process.env.EXPO_PUBLIC_API_URL ?? "";
     return _resolved;
   }
 
+  // Fallback: derive from hostUri (works on LAN)
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const host = hostUri.split(":")[0];
-    const apiPort = process.env.EXPO_PUBLIC_API_PORT || "8080";
-    _resolved = `http://${host}:${apiPort}`;
+    _resolved = `http://${host}:8080`;
     return _resolved;
-  }
-
-  if (__DEV__) {
-    console.warn(
-      "[API] EXPO_PUBLIC_API_URL not set. API calls will use relative URLs. " +
-        "Set EXPO_PUBLIC_API_URL in your EAS build secrets or .env for production."
-    );
   }
 
   _resolved = "";

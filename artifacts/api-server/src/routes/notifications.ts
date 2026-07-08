@@ -2,10 +2,10 @@ import { Router, Request as ExpressRequest, Response as ExpressResponse } from "
 import fs from "fs";
 import path from "path";
 import webPush from "web-push";
+import { detectLive, CHANNEL_ID } from "../lib/live-detection.js";
 
 const router = Router();
 
-const CHANNEL_ID = "UChxz3kSq1sw0pLD3Pg-Vj7w";
 const ADMIN_PASSCODE = "DAFIRE94";
 const TOKENS_FILE = path.join(process.cwd(), "push_tokens.json");
 const WEB_SUBS_FILE = path.join(process.cwd(), "web_push_subscriptions.json");
@@ -133,29 +133,6 @@ async function fetchLatestVideoFromRss(): Promise<{ id: string; title: string } 
   } catch { return null; }
 }
 
-// ── Live stream check ─────────────────────────────────────────────────────────
-const INVIDIOUS_INSTANCES = [
-  "https://inv.tux.pizza",
-  "https://invidious.nerdvpn.de",
-  "https://invidious.io.lol",
-];
-
-async function checkLiveStream(): Promise<{ isLive: boolean; title: string }> {
-  const results = await Promise.allSettled(
-    INVIDIOUS_INSTANCES.map(async (base) => {
-      const res = await fetch(`${base}/api/v1/channels/${CHANNEL_ID}/streams`, { signal: AbortSignal.timeout(4000) });
-      if (!res.ok) throw new Error(`${res.status}`);
-      const data = (await res.json()) as { videos?: { liveNow?: boolean; title?: string }[] };
-      const live = data.videos?.find((v) => v.liveNow);
-      return { isLive: !!live, title: live?.title ?? "" };
-    })
-  );
-  for (const r of results) {
-    if (r.status === "fulfilled") return r.value;
-  }
-  return { isLive: false, title: "" };
-}
-
 // ── Background poller ─────────────────────────────────────────────────────────
 let pollerStarted = false;
 
@@ -165,7 +142,7 @@ export function startNotificationPoller() {
 
   async function poll() {
     try {
-      const { isLive, title } = await checkLiveStream();
+      const { isLive, title } = await detectLive(CHANNEL_ID);
       if (isLive && !notifState.wasLive) {
         notifState.wasLive = true;
         saveNotifState();
@@ -202,7 +179,7 @@ export function startNotificationPoller() {
       if (latest && notifState.lastVideoId === undefined) { notifState.lastVideoId = latest.id; saveNotifState(); }
     } catch {}
     try {
-      const { isLive } = await checkLiveStream();
+      const { isLive } = await detectLive(CHANNEL_ID);
       if (notifState.wasLive === undefined) { notifState.wasLive = isLive; saveNotifState(); }
     } catch {}
   }

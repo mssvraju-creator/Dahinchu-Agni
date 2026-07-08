@@ -173,16 +173,32 @@ export default function HomeScreen() {
         ) : null}
 
         {/* Bible Verse */}
-        <LinearGradient
-          colors={["#FFF7ED", "#FFECD2", "#FFF7ED"] as any}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.verseCard, { borderColor: "#FED7AA" }]}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={async () => {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            router.push("/(tabs)/bible" as any);
+          }}
         >
-          <Feather name="book-open" size={15} color="#F97316" style={{ marginBottom: 8 }} />
-          <Text style={[styles.verseText, { color: "#431407" }]}>"{verse.text}"</Text>
-          <Text style={[styles.verseRef, { color: "#E84C1E" }]}>{verse.ref}</Text>
-        </LinearGradient>
+          <LinearGradient
+            colors={["#FFF7ED", "#FFECD2", "#FFF7ED"] as any}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.verseCard, { borderColor: "#FED7AA" }]}
+          >
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 10 }}>
+              <Feather name="book-open" size={14} color="#F97316" />
+              <Text style={{ fontSize: 11, fontWeight: "600", color: "#F97316", fontFamily: "Inter_600SemiBold", letterSpacing: 0.5, textTransform: "uppercase" }}>
+                Daily Verse
+              </Text>
+            </View>
+            {verse.teluguText ? (
+              <Text style={[styles.verseText, { color: "#431407", fontSize: 14, lineHeight: 22 }]}>"{verse.teluguText}"</Text>
+            ) : null}
+            <Text style={[styles.verseText, { color: "#431407" }]}>"{verse.text}"</Text>
+            <Text style={[styles.verseRef, { color: "#E84C1E" }]}>{verse.ref}</Text>
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* Stats */}
         <View style={styles.statsRow}>
@@ -229,6 +245,17 @@ export default function HomeScreen() {
           >
             <Feather name="heart" size={14} color="#FFFFFF" />
             <Text style={styles.quickBtnText}>Prayer</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.quickBtn, { backgroundColor: "#B45309" }]}
+            onPress={async () => {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.push("/(tabs)/bible" as any);
+            }}
+          >
+            <Feather name="book-open" size={14} color="#FFFFFF" />
+            <Text style={styles.quickBtnText}>Bible</Text>
           </TouchableOpacity>
         </View>
 
@@ -404,22 +431,23 @@ const styles = StyleSheet.create({
   verseText: { fontSize: 15, lineHeight: 23, fontStyle: "italic", marginBottom: 10, fontFamily: "Inter_400Regular" },
   verseRef: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
 
-  statsRow: { flexDirection: "row", paddingHorizontal: 16, gap: 8, marginBottom: 16 },
-  statCard: { flex: 1, borderRadius: 12, borderWidth: 1, padding: 12, alignItems: "center", gap: 3 },
-  statNumber: { fontSize: 18, fontWeight: "700" },
-  statLabel: { fontSize: 9, textTransform: "uppercase", letterSpacing: 0.4, textAlign: "center" },
+  statsRow: { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 16, gap: 8, marginBottom: 16 },
+  statCard: { width: "48%", borderRadius: 12, borderWidth: 1, padding: 14, alignItems: "center", gap: 4 },
+  statNumber: { fontSize: 22, fontWeight: "700" },
+  statLabel: { fontSize: 10, textTransform: "uppercase", letterSpacing: 0.5, textAlign: "center" },
 
-  quickActions: { flexDirection: "row", marginHorizontal: 16, gap: 10, marginBottom: 20 },
+  quickActions: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: 16, gap: 8, marginBottom: 20 },
   quickBtn: {
-    flex: 1,
+    width: "48%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 13,
+    gap: 5,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: 12,
   },
-  quickBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 13, fontFamily: "Inter_600SemiBold" },
+  quickBtnText: { color: "#FFFFFF", fontWeight: "600", fontSize: 12, fontFamily: "Inter_600SemiBold" },
   liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "rgba(255,255,255,0.6)" },
   liveDotActive: { backgroundColor: "#FFFFFF" },
 
@@ -427,11 +455,11 @@ const styles = StyleSheet.create({
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "baseline",
     marginBottom: 12,
   },
-  sectionTitle: { fontSize: 22, fontWeight: "600" },
-  seeAll: { fontSize: 14, fontWeight: "500", fontFamily: "Inter_500Medium" },
+  sectionTitle: { fontSize: 20, fontWeight: "600" },
+  seeAll: { fontSize: 13, fontWeight: "600", fontFamily: "Inter_600SemiBold" },
   skeletonCard: { borderRadius: 12, padding: 20, alignItems: "center" },
   emptyCard: {
     borderRadius: 12,

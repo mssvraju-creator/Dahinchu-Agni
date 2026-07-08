@@ -1,10 +1,10 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { useState } from "react";
+import * as WebBrowser from "expo-web-browser";
+import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { YouTubeVideo } from "@/hooks/useYouTubeFeed";
 import { useColors } from "@/hooks/useColors";
-import { YouTubePlayer } from "./YouTubePlayer";
 
 function formatDate(iso: string) {
   const d = new Date(iso);
@@ -19,21 +19,24 @@ interface Props {
 
 export function VideoCard({ video, featured, compact }: Props) {
   const colors = useColors();
-  const [playerVisible, setPlayerVisible] = useState(false);
 
   async function handlePress() {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setPlayerVisible(true);
+    try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+    await WebBrowser.openBrowserAsync(video.videoUrl);
   }
 
-  if (featured) {
-    return (
-      <>
-        <TouchableOpacity
-          activeOpacity={0.92}
-          onPress={handlePress}
-          style={[styles.featured, { backgroundColor: colors.card, borderColor: colors.border }]}
-        >
+  return (
+    <TouchableOpacity
+      activeOpacity={0.92}
+      onPress={handlePress}
+      style={
+        featured
+          ? [styles.featured, { backgroundColor: colors.card, borderColor: colors.border }]
+          : [styles.card, { backgroundColor: colors.card, borderColor: colors.border }]
+      }
+    >
+      {featured ? (
+        <>
           <View style={styles.featuredThumb}>
             <Image source={{ uri: video.thumbnailUrl }} style={styles.featuredImage} resizeMode="cover" />
             <View style={styles.playOverlay}>
@@ -47,10 +50,6 @@ export function VideoCard({ video, featured, compact }: Props) {
                 <Text style={styles.liveText}>LIVE</Text>
               </View>
             ) : null}
-            <View style={styles.inAppBadge}>
-              <Feather name="smartphone" size={9} color="#FFFFFF" />
-              <Text style={styles.inAppText}>Play in app</Text>
-            </View>
           </View>
           <View style={styles.featuredInfo}>
             <Text style={[styles.featuredTitle, { color: colors.foreground }]} numberOfLines={2}>
@@ -58,57 +57,31 @@ export function VideoCard({ video, featured, compact }: Props) {
             </Text>
             <Text style={[styles.date, { color: colors.mutedForeground }]}>{formatDate(video.published)}</Text>
           </View>
-        </TouchableOpacity>
-
-        <YouTubePlayer
-          visible={playerVisible}
-          videoId={video.id}
-          title={video.title}
-          published={video.published}
-          channelName={video.channelName}
-          onClose={() => setPlayerVisible(false)}
-        />
-      </>
-    );
-  }
-
-  return (
-    <>
-      <TouchableOpacity
-        activeOpacity={0.92}
-        onPress={handlePress}
-        style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
-      >
-        <View style={styles.thumbContainer}>
-          <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} resizeMode="cover" />
-          <View style={styles.playSmall}>
-            <Feather name="play" size={11} color="#FFFFFF" />
-          </View>
-          {video.isLive ? (
-            <View style={styles.liveBadgeSmall}>
-              <View style={styles.liveDot} />
-              <Text style={styles.liveTextSmall}>LIVE</Text>
+        </>
+      ) : (
+        <>
+          <View style={styles.thumbContainer}>
+            <Image source={{ uri: video.thumbnailUrl }} style={styles.thumb} resizeMode="cover" />
+            <View style={styles.playSmall}>
+              <Feather name="play" size={11} color="#FFFFFF" />
             </View>
-          ) : null}
-        </View>
-        <View style={styles.info}>
-          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
-            {video.title}
-          </Text>
-          <Text style={[styles.date, { color: colors.mutedForeground }]}>{formatDate(video.published)}</Text>
-          <Text style={[styles.channel, { color: colors.mutedForeground }]}>{video.channelName}</Text>
-        </View>
-      </TouchableOpacity>
-
-      <YouTubePlayer
-        visible={playerVisible}
-        videoId={video.id}
-        title={video.title}
-        published={video.published}
-        channelName={video.channelName}
-        onClose={() => setPlayerVisible(false)}
-      />
-    </>
+            {video.isLive ? (
+              <View style={styles.liveBadgeSmall}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveTextSmall}>LIVE</Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.info}>
+            <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={2}>
+              {video.title}
+            </Text>
+            <Text style={[styles.date, { color: colors.mutedForeground }]}>{formatDate(video.published)}</Text>
+            <Text style={[styles.channel, { color: colors.mutedForeground }]}>{video.channelName}</Text>
+          </View>
+        </>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -169,24 +142,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 1,
     fontFamily: "Inter_700Bold",
-  },
-  inAppBadge: {
-    position: "absolute",
-    bottom: 10,
-    right: 10,
-    backgroundColor: "rgba(0,0,0,0.65)",
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  inAppText: {
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontFamily: "Inter_500Medium",
-    letterSpacing: 0.3,
   },
   featuredInfo: {
     padding: 14,
